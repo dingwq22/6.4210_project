@@ -13,20 +13,20 @@ directives:
     default_free_body_pose:
         chassis:
             translation: [0, 0, 0.055]
-# - add_model:
-#     name: iiwa_right
-#     file: package://drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf
-#     default_joint_positions:
-#         iiwa_joint_1: [-1.57]
-#         iiwa_joint_2: [0.1]
-#         iiwa_joint_3: [0]
-#         iiwa_joint_4: [-1.2]
-#         iiwa_joint_5: [0]
-#         iiwa_joint_6: [ 1.6]
-#         iiwa_joint_7: [0]
-# - add_weld:
-#     parent: world
-#     child: iiwa_right::iiwa_link_0
+- add_model:
+    name: iiwa_right
+    file: package://drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf
+    default_joint_positions:
+        iiwa_joint_1: [-1.57]
+        iiwa_joint_2: [0.1]
+        iiwa_joint_3: [0]
+        iiwa_joint_4: [-1.2]
+        iiwa_joint_5: [0]
+        iiwa_joint_6: [ 1.6]
+        iiwa_joint_7: [0]
+- add_weld:
+    parent: mecanum_base::chassis
+    child: iiwa_right::iiwa_link_0
     
 - add_model:
     name: box
