@@ -198,3 +198,27 @@ def solve_ik(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3))
 
     print("Failed!")
     return None
+
+def set_position(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3)):
+    diagram, plant, scene_graph = build_env(meshcat)
+
+    world_frame = plant.world_frame()
+    gripper_frame = plant.GetFrameByName("l_gripper_palm_link")
+
+    context = diagram.CreateDefaultContext()
+    plant_context = plant.GetMyContextFromRoot(context)
+    print('1', plant_context)
+    sg_context = scene_graph.GetMyContextFromRoot(context)
+    filterCollsionGeometry(scene_graph, sg_context)
+
+    goal_position = X_WG.translation()
+    q_variables = np.concatenate((np.array(goal_position), np.zeros(15)))
+    print(q_variables)
+
+
+    if running_as_notebook:
+        plant.SetPositions(
+            plant_context,
+            q_variables
+        )
+        diagram.ForcedPublish(context)
