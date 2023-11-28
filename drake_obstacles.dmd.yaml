@@ -12,7 +12,6 @@ directives:
 - add_model:
     name: pr2
     file: package://manipulation/pr2_collision_fixed.urdf
-
 # - add_model:
 #     name: mecanum_base
 #     file: package://moon/objects/mecanum_base.urdf
@@ -324,5 +323,5 @@ directives:
     file: package://moon/objects/mountain_OBJ.sdf
     default_free_body_pose:
         mountain_OBJ: # Change here!
-            translation: [0, 0, 0]
-            # rotation: !Rpy {{ deg: [0, -90, 0] }}   
+            translation: [1, 1, 0]
+            
