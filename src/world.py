@@ -136,7 +136,7 @@ def teleop(meshcat):
     # robot_instance = plant.GetModelInstanceByName("mobile_iiwa")
 
     # for debugging 
-    # notebook_plot_plant(plant)
+    notebook_plot_plant(plant)
 
     # controller = builder.AddSystem(MyController(plant, robot_instance))
     # builder.Connect(plant.get_state_output_port(), controller.get_input_port(1))
@@ -191,7 +191,7 @@ def teleop(meshcat):
     simulator = Simulator(diagram)
     context = simulator.get_mutable_context()
     # for debugging 
-    # notebook_plot_diagram(diagram)
+    notebook_plot_diagram(diagram)
 
     simulator.set_target_realtime_rate(1.0)
 

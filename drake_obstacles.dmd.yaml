@@ -54,17 +54,20 @@ directives:
 - add_model:
     name: rock2
     file: package://moon/objects/Cliff_Rock_One_OBJ.sdf
-    default_free_body_pose:
-        Cliff_Rock_One_OBJ: 
-            translation: [-1, -1, 0.5]
+- add_weld:
+    parent: world
+    child: rock2::Cliff_Rock_One_OBJ
+    X_PC:
+        translation: [-1, -1, 0]
 
 - add_model:
     name: mountain1
     file: package://moon/objects/mountain_OBJ.sdf
-    default_free_body_pose:
-        mountain_OBJ: # Change here!
-            translation: [1, 1, 0]
-            
+- add_weld:
+    parent: world
+    child: mountain1::mountain_OBJ
+    X_PC:
+        translation: [1, 1, 0]       
 
 # - add_model:
 #     name: box

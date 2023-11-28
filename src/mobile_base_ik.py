@@ -27,15 +27,14 @@ import math
 
 def build_env(meshcat):
     """Load in models and build the diagram."""
+    print("build env start")
     builder = DiagramBuilder()
     plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
     parser = Parser(plant)
     ConfigureParser(parser)
-    # parser.AddModelsFromUrl("package://manipulation/pr2_shelves.dmd.yaml")
     # load local pkg 
     parser.package_map().PopulateFromFolder("..")
     parser.AddModels('../drake_obstacles.dmd.yaml')
-    print("build env start")
     plant.Finalize()
 
     MeshcatVisualizer.AddToBuilder(
@@ -160,8 +159,6 @@ def solve_ik(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3))
 
 
     # Add your constraints here
-    # pose = plant.GetPositions(plant_context)
-    print("pose",  X_WG.translation())
     if fix_base:
         AddPositionConstraint(ik, base_pose, base_pose)
     else:
@@ -184,6 +181,8 @@ def solve_ik(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3))
         
 
         result = Solve(prog)
+        # print("result: ", result)
+        print("solution: ", result.GetSolution(q_variables))
 
         if running_as_notebook:
             render_context = diagram.CreateDefaultContext()
