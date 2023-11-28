@@ -5,6 +5,7 @@ from pydrake.all import (AddMultibodyPlantSceneGraph, DiagramBuilder,
                          LeafSystem, DiscreteContactSolver, MeshcatVisualizer,
                          Parser, Simulator, StartMeshcat)
 # from manipulation.station import MakeHardwareStation, load_scenario
+from manipulation import ConfigureParser
 from utils import *
                         
 
@@ -119,6 +120,7 @@ class MyController(LeafSystem):
         output.SetFromVector(torque)
 
 def teleop():
+
     builder = DiagramBuilder()
 
     time_step = 0.005
@@ -126,11 +128,13 @@ def teleop():
                                                     time_step=time_step)
     #plant.set_discrete_contact_solver(DiscreteContactSolver.kSap)
     parser = Parser(plant)
+    ConfigureParser(parser)
     parser.package_map().PopulateFromFolder("..")
     parser.AddModels('../drake_obstacles.dmd.yaml')
     plant.set_discrete_contact_solver(DiscreteContactSolver.kSap)
     plant.Finalize()
-    robot_instance = plant.GetModelInstanceByName("mecanum_base")
+    # robot_instance = plant.GetModelInstanceByName("mecanum_base")
+    robot_instance = plant.GetModelInstanceByName("mobile_iiwa")
 
     # for debugging 
     notebook_plot_plant(plant)
@@ -139,6 +143,11 @@ def teleop():
     builder.Connect(plant.get_state_output_port(), controller.get_input_port(1))
     builder.Connect(controller.get_output_port(),
                     plant.get_actuation_input_port())
+    
+    # arm_controller =  builder.AddSystem(MyController(plant, arm_instance))
+    # builder.Connect(plant.get_state_output_port(), arm_controller.get_input_port(1))
+    # builder.Connect(arm_controller.get_output_port(),
+    #                 plant.get_actuation_input_port())
 
 
     meshcat.Delete()
