@@ -1,5 +1,7 @@
 import numpy as np
 from pydrake.all import (
+    ConstantVectorSource,
+    InverseDynamicsController,
     DiagramBuilder,
     AddMultibodyPlantSceneGraph,
     Parser,
@@ -20,36 +22,52 @@ from pydrake.all import (
     RigidTransform,
     InverseDynamicsController,
 )
+from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
+from manipulation.station import MakeHardwareStation
 from manipulation import ConfigureParser, running_as_notebook
 # from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.station import MakeHardwareStation, load_scenario
 
-from utils import find_project_path
-
+from utils import find_project_path, notebook_plot_diagram
+from mountain_building import get_mountain_yaml
 import pydot
 from IPython.display import display, Image, SVG
 import math
 import os
 
 
-def setup_hardware_station(meshcat):
+def setup_hardware_station(meshcat, obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
+
     builder = DiagramBuilder()
     path = find_project_path()
     print(path)
+    degrees = '{ deg: [90, 0, 90]}'
     scenario_data = f"""
 directives:
 - add_model:
-    name: ground
-    file: file://{path}/objects/ground.sdf
-- add_weld:
-    parent: world
-    child: ground::base
-    X_PC:
-        translation: [0, 0, 0]
-
+    name: iiwa
+    file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
+    default_joint_positions:
+        iiwa_joint_1: [-1.57]
+        iiwa_joint_2: [0.1]
+        iiwa_joint_3: [0]
+        iiwa_joint_4: [-1.2]
+        iiwa_joint_5: [0]
+        iiwa_joint_6: [ 1.6]
+        iiwa_joint_7: [0]
 - add_model:
-    name: pr2
-    file: file://{path}/objects/pr2_simplified.urdf
+    name: wsg
+    file: package://drake/manipulation/models/wsg_50_description/sdf/schunk_wsg_50_no_tip.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_7
+    child: wsg::body
+    X_PC:
+        translation: [0, 0, 0.114]
+        rotation: !Rpy {degrees}
+
+# - add_model:
+#     name: pr2
+#     file: file://{path}/objects/pr2_simplified.urdf
 - add_model:
     name: rock2
     file: file://{path}/objects/Cliff_Rock_One_OBJ.sdf
@@ -58,62 +76,66 @@ directives:
     child: rock2::Cliff_Rock_One_OBJ
     X_PC:
         translation: [-1, -1, 0]
-
-- add_model:
-    name: mountain1
-    file: file://{path}/objects/mountain_OBJ.sdf
-- add_weld:
-    parent: world
-    child: mountain1::mountain_OBJ
-    X_PC:
-        translation: [1, 1, 0]
 """
+    #add mountains
+    # scenario_data += get_mountain_yaml(obstables)
+    
     scenario = load_scenario(data=scenario_data)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     context = station.CreateDefaultContext()
 
     # station.GetInputPort("wsg.position").FixValue(context, [0.1])
     station.ForcedPublish(context)
+    # print(station.get_input_port(1))
    
     plant = station.GetSubsystemByName("plant")
 
-    return station, plant
+    scene_graph = station.GetSubsystemByName("scene_graph")
+    MeshcatVisualizer.AddToBuilder(
+        builder,
+        station.GetOutputPort("query_object"),
+        meshcat,
+        MeshcatVisualizerParams(delete_on_initialization_event=False),
+    )
+    diagram = builder.Build()
+    notebook_plot_diagram(diagram)
+    return station, plant, scene_graph
 
 def setup_manipulation_station(meshcat):
     
     model_directives = """
-directives:
-- add_model:
-    name: ground
-    file: file:///workspaces/final_project/objects/ground.sdf
-- add_weld:
-    parent: world
-    child: ground::base
-    X_PC:
-        translation: [0, 0, 0]
+    directives:
+    - add_model:
+        name: ground
+        file: file:///workspaces/final_project/objects/ground.sdf
+    - add_weld:
+        parent: world
+        child: ground::base
+        X_PC:
+            translation: [0, 0, 0]
 
-- add_model:
-    name: pr2
-    # file: file:///workspaces/final_project/objects/pr2_simplified.urdf
-    file: package://manipulation/pr2_collision_fixed.urdf
-- add_model:
-    name: rock2
-    file: file:///workspaces/final_project/objects/Cliff_Rock_One_OBJ.sdf
-- add_weld:
-    parent: world
-    child: rock2::Cliff_Rock_One_OBJ
-    X_PC:
-        translation: [-1, -1, 0]
+    - add_model:
+        name: pr2
+        # file: file:///workspaces/final_project/objects/pr2_simplified.urdf
+        file: package://manipulation/pr2_collision_fixed.urdf
+    - add_model:
+        name: rock2
+        file: file:///workspaces/final_project/objects/Cliff_Rock_One_OBJ.sdf
+    - add_weld:
+        parent: world
+        child: rock2::Cliff_Rock_One_OBJ
+        X_PC:
+            translation: [-1, -1, 0]
 
-- add_model:
-    name: mountain1
-    file: file:///workspaces/final_project/objects/mountain_OBJ.sdf
-- add_weld:
-    parent: world
-    child: mountain1::mountain_OBJ
-    X_PC:
-        translation: [1, 1, 0]       
-"""
+    - add_model:
+        name: mountain1
+        file: file:///workspaces/final_project/objects/mountain_OBJ.sdf
+    - add_weld:
+        parent: world
+        child: mountain1::mountain_OBJ
+        X_PC:
+            translation: [1, 1, 0]       
+    """
 
     builder = DiagramBuilder()
     station = builder.AddSystem(
@@ -158,23 +180,70 @@ directives:
 def build_env(meshcat):
     """Load in models and build the diagram."""
     print("build env start")
-    builder = DiagramBuilder()
-    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
-    parser = Parser(plant)
-    ConfigureParser(parser)
-    # load local pkg 
-    parser.package_map().PopulateFromFolder("..")
-    parser.AddModels('../drake_obstacles.dmd.yaml')
-    plant.Finalize()
 
-    MeshcatVisualizer.AddToBuilder(
+    # builder = DiagramBuilder()
+    # plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.0)
+    # parser = Parser(plant)
+    # ConfigureParser(parser)
+    # # load local pkg 
+    # parser.package_map().PopulateFromFolder("..")
+    # parser.AddModels('../drake_obstacles.dmd.yaml')
+    # plant.Finalize()
+
+    # MeshcatVisualizer.AddToBuilder(
+    #     builder,
+    #     scene_graph.get_query_output_port(),
+    #     meshcat,
+    #     MeshcatVisualizerParams(delete_on_initialization_event=False),
+    # )
+    # import os 
+    # print(os.getcwd())
+
+
+    builder = DiagramBuilder()
+
+    station = builder.AddSystem(
+        MakeHardwareStation(
+            filename= 'file:///workspaces/6.4210_project/drake_obstacles.dmd.yaml',
+            time_step=1e-3,
+        )
+    )
+    print('station made')
+    plant = station.GetSubsystemByName("plant")
+    scene_graph = station.GetSubsystemByName("scene_graph")
+    AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
+
+    # q_traj_system = builder.AddSystem(TrajectorySource(q_traj))
+    # g_traj_system = builder.AddSystem(TrajectorySource(g_traj))
+
+    visualizer = MeshcatVisualizer.AddToBuilder(
         builder,
-        scene_graph.get_query_output_port(),
+        station.GetOutputPort("query_object"),
         meshcat,
         MeshcatVisualizerParams(delete_on_initialization_event=False),
     )
 
+
+    # ## Directly add controller
+    # # Adds an approximation of the iiwa controller.
+    # kp = [100] * plant.num_positions() #position, intgral, gain
+    # ki = [1] * plant.num_positions()
+    # kd = [20] * plant.num_positions()
+    # pr2_controller = builder.AddSystem(
+    #     InverseDynamicsController(plant, kp, ki, kd, False)
+    # )
+    # pr2_controller.set_name("pr2_controller")
+    # builder.Connect(
+    #     plant.get_state_output_port(), #arugment? iiwa_model
+    #     pr2_controller.get_input_port_estimated_state(),
+    # )
+    # builder.Connect(
+    #     pr2_controller.get_output_port_control(), plant.get_actuation_input_port()
+    # )
+
     diagram = builder.Build()
+
+
     print("build env done")
     return diagram, plant, scene_graph
 
@@ -236,10 +305,32 @@ def filterCollsionGeometry(scene_graph, context=None):
     add_exclusion(pr2["l_forearm_link"], pr2["l_gripper_palm_link"])
     add_exclusion(pr2["r_forearm_link"], pr2["r_gripper_palm_link"])
 
+# def set_position(meshcat, base_pose=np.zeros(3), other_q = np.zeros(15)):
+#     diagram, plant, scene_graph = build_env(meshcat)
+
+#     world_frame = plant.world_frame()
+#     gripper_frame = plant.GetFrameByName("l_gripper_palm_link")
+
+#     context = diagram.CreateDefaultContext()
+#     plant_context = plant.GetMyContextFromRoot(context)
+#     sg_context = scene_graph.GetMyContextFromRoot(context)
+#     filterCollsionGeometry(scene_graph, sg_context)
+#     print('calculate q')
+#     q = np.concatenate((base_pose, other_q))
+#     print(q)
+ 
+#     render_context = diagram.CreateDefaultContext()
+#     print(render_context)
+#     plant.SetPositions(
+#         plant.GetMyContextFromRoot(render_context),
+#         q,
+#     )
+#     diagram.ForcedPublish(context)
 
 
 def solve_ik(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3)):
     diagram, plant, scene_graph = build_env(meshcat)
+    
 
     world_frame = plant.world_frame()
     gripper_frame = plant.GetFrameByName("l_gripper_palm_link")
@@ -314,17 +405,26 @@ def solve_ik(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3))
         # print("result: ", result)
         print("solution: ", result.GetSolution(q_variables))
 
-        if running_as_notebook:
-            render_context = diagram.CreateDefaultContext()
-            plant.SetPositions(
-                plant.GetMyContextFromRoot(render_context),
-                result.GetSolution(q_variables),
-            )
-            diagram.ForcedPublish(context)
+    if running_as_notebook:
+        print('here')
 
-        if result.is_success():
-            print("Succeeded in %d tries!" % (count + 1))
-            return result.GetSolution(q_variables)
+    #     q_trial = np.array([0,0,0,  2.71168640e-01,
+    # -2.26006123e-01,  5.18719075e-01, -4.69258756e-02,  0.00000000e+00,
+    # 3.19518530e-04,  0.00000000e+00,  7.42846334e-04, -6.59331305e-01,
+    # -3.34363573e-01, -8.00000000e-01, -1.61940659e+00, -2.46277237e+00,
+    # -1.34603582e+00, -1.79865686e+01])
+        render_context = diagram.CreateDefaultContext()
+        print(render_context)
+        plant.SetPositions(
+            plant.GetMyContextFromRoot(render_context),
+            # q_trial,
+            result.GetSolution(q_variables),
+        )
+        diagram.ForcedPublish(context)
+
+        # if result.is_success():
+        #     print("Succeeded in %d tries!" % (count + 1))
+        #     return result.GetSolution(q_variables)
 
     print("Failed!")
     return None
@@ -333,10 +433,10 @@ def set_position(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros
     # diagram, plant, scene_graph = build_env(meshcat)
 
     # using hardware station
-    plant, station = setup_hardware_station(meshcat)
+    plant, station, scene_graph = setup_hardware_station(meshcat)
     # initialize context
-    station_context = station.CreateDefaultContext()
-    plant_context = plant.GetMyContextFromRoot(station_context)
+    # station_context = station.CreateDefaultContext()
+    # plant_context = plant.GetMyContextFromRoot(station_context)
 
     # previous code 
     world_frame = plant.world_frame()
