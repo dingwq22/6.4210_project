@@ -1,0 +1,31 @@
+directives:
+- add_model:
+    name: ground
+    file: file:///workspaces/final_project/objects/ground.sdf
+- add_weld:
+    parent: world
+    child: ground::base
+    X_PC:
+        translation: [0, 0, 0]
+
+- add_model:
+    name: pr2
+    # file: file:///workspaces/final_project/objects/pr2_simplified.urdf
+    file: package://manipulation/pr2_collision_fixed.urdf
+- add_model:
+    name: rock2
+    file: file:///workspaces/final_project/objects/Cliff_Rock_One_OBJ.sdf
+- add_weld:
+    parent: world
+    child: rock2::Cliff_Rock_One_OBJ
+    X_PC:
+        translation: [-1, -1, 0]
+
+- add_model:
+    name: mountain1
+    file: file:///workspaces/final_project/objects/mountain_OBJ.sdf
+- add_weld:
+    parent: world
+    child: mountain1::mountain_OBJ
+    X_PC:
+        translation: [1, 1, 0]  
