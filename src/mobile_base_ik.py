@@ -24,19 +24,52 @@ from manipulation import ConfigureParser, running_as_notebook
 # from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.station import MakeHardwareStation, load_scenario
 
+from utils import find_project_path
+
 import pydot
 from IPython.display import display, Image, SVG
 import math
+import os
+
 
 def setup_hardware_station(meshcat):
-    scenario_data = """
+    builder = DiagramBuilder()
+    path = find_project_path()
+    print(path)
+    scenario_data = f"""
 directives:
-- add_directives:
-    file: file:///workspaces/final_project/drake_obstacles_nopkg.yaml
+- add_model:
+    name: ground
+    file: file://{path}/objects/ground.sdf
+- add_weld:
+    parent: world
+    child: ground::base
+    X_PC:
+        translation: [0, 0, 0]
 
+- add_model:
+    name: pr2
+    file: file://{path}/objects/pr2_simplified.urdf
+- add_model:
+    name: rock2
+    file: file://{path}/objects/Cliff_Rock_One_OBJ.sdf
+- add_weld:
+    parent: world
+    child: rock2::Cliff_Rock_One_OBJ
+    X_PC:
+        translation: [-1, -1, 0]
+
+- add_model:
+    name: mountain1
+    file: file://{path}/objects/mountain_OBJ.sdf
+- add_weld:
+    parent: world
+    child: mountain1::mountain_OBJ
+    X_PC:
+        translation: [1, 1, 0]
 """
     scenario = load_scenario(data=scenario_data)
-    station = MakeHardwareStation(scenario, meshcat=meshcat)
+    station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
     context = station.CreateDefaultContext()
 
     # station.GetInputPort("wsg.position").FixValue(context, [0.1])
