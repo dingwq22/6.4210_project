@@ -35,6 +35,12 @@ from IPython.display import display, Image, SVG
 import math
 import os
 
+def notebook_plot_diagram_svg(diagram):
+    return SVG(
+    pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=1))[
+        0
+    ].create_svg()
+)
 
 def setup_hardware_station(meshcat, obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
 
@@ -74,29 +80,59 @@ directives:
     X_PC:
         translation: [-1, -1, 0]
 """
+    print(scenario_data)
     #add mountains
     # scenario_data += get_mountain_yaml(obstables)
     
     scenario = load_scenario(data=scenario_data)
-    station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
-    context = station.CreateDefaultContext()
+    station = builder.AddSystem(MakeManipulationStation(filename="file:///workspaces/6.4210_project/drake_obstacles_nopkg.dmd.yaml"))
+    # station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
-    # station.GetInputPort("wsg.position").FixValue(context, [0.1])
-    station.ForcedPublish(context)
-    # print(station.get_input_port(1))
-   
     plant = station.GetSubsystemByName("plant")
-
     scene_graph = station.GetSubsystemByName("scene_graph")
+    AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
+
     MeshcatVisualizer.AddToBuilder(
         builder,
         station.GetOutputPort("query_object"),
         meshcat,
         MeshcatVisualizerParams(delete_on_initialization_event=False),
     )
+
+    wsg_position = builder.AddSystem(ConstantVectorSource([0.1]))
+    # builder.Connect(
+    #     wsg_position.get_output_port(), station.GetInputPort("wsg_position")
+    # )
+
     diagram = builder.Build()
-    notebook_plot_diagram(diagram)
-    return station, plant, scene_graph
+
+    context = plant.CreateDefaultContext()
+    gripper = plant.GetBodyByName("body")
+
+    initial_pose = plant.EvalBodyPoseInWorld(context, gripper)
+
+    simulator = Simulator(diagram)
+    simulator.set_target_realtime_rate(1.0)
+    simulator.AdvanceTo(0.01)
+    # context = station.CreateDefaultContext()
+
+    # # station.GetInputPort("wsg.position").FixValue(context, [0.1])
+    # station.ForcedPublish(context)
+    # # print(station.get_input_port(1))
+   
+    # plant = station.GetSubsystemByName("plant")
+
+    # scene_graph = station.GetSubsystemByName("scene_graph")
+    # MeshcatVisualizer.AddToBuilder(
+    #     builder,
+    #     station.GetOutputPort("query_object"),
+    #     meshcat,
+    #     MeshcatVisualizerParams(delete_on_initialization_event=False),
+    # )
+    # diagram = builder.Build()
+    print('plotting')
+    # print(notebook_plot_diagram_svg(diagram))
+    return station, plant, scene_graph, diagram
 
 
 
@@ -165,35 +201,37 @@ def set_position(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros
     # diagram, plant, scene_graph = build_env(meshcat)
 
     # using hardware station
-    plant, station, scene_graph = setup_hardware_station(meshcat)
+    plant, station, scene_graph, diagram = setup_hardware_station(meshcat)
+    return diagram
+
     # initialize context
     # station_context = station.CreateDefaultContext()
     # plant_context = plant.GetMyContextFromRoot(station_context)
 
     # previous code 
-    world_frame = plant.world_frame()
-    gripper_frame = plant.GetFrameByName("l_gripper_palm_link")
+    # world_frame = plant.world_frame()
+    # gripper_frame = plant.GetFrameByName("l_gripper_palm_link")
 
-    context = diagram.CreateDefaultContext()
-    plant_context = plant.GetMyContextFromRoot(context)
-    sg_context = scene_graph.GetMyContextFromRoot(context)
-    filterCollsionGeometry(scene_graph, sg_context)
+    # context = diagram.CreateDefaultContext()
+    # plant_context = plant.GetMyContextFromRoot(context)
+    # sg_context = scene_graph.GetMyContextFromRoot(context)
+    # filterCollsionGeometry(scene_graph, sg_context)
 
-    ik = InverseKinematics(plant, plant_context)
-    q_variables = ik.q()  # Get variables for MathematicalProgram
-    q_len = len(q_variables)
-    print("q_var len: ", q_len)
-    # q_nominal = np.zeros(len(q_variables))
+    # ik = InverseKinematics(plant, plant_context)
+    # q_variables = ik.q()  # Get variables for MathematicalProgram
+    # q_len = len(q_variables)
+    # print("q_var len: ", q_len)
+    # # q_nominal = np.zeros(len(q_variables))
 
-    goal_position = X_WG.translation()
-    q_variables = np.concatenate((np.array(goal_position), np.zeros(q_len - 3)))
-    # q_variables = q_nominal
-    print("q_varibles: " , q_variables)
+    # goal_position = X_WG.translation()
+    # q_variables = np.concatenate((np.array(goal_position), np.zeros(q_len - 3)))
+    # # q_variables = q_nominal
+    # print("q_varibles: " , q_variables)
 
 
-    if running_as_notebook:
-        plant.SetPositions(
-            plant_context,
-            q_variables
-        )
-        diagram.ForcedPublish(context)
+    # if running_as_notebook:
+    #     plant.SetPositions(
+    #         plant_context,
+    #         q_variables
+    #     )
+    #     diagram.ForcedPublish(context)
