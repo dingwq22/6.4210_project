@@ -339,6 +339,7 @@ maps2 = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
                 ['WG', 'WG', 'WG', '  ', '  ', 'GG', 'WG'],
                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 
+
 # add inverse dynamics controller
 # actuation import port -> choose inverse dynamics
 
