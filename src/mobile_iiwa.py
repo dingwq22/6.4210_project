@@ -48,6 +48,8 @@ def setup_hardware_station(meshcat, obstables = [(1, 4), (1, 5), (2, 2), (2, 3),
     path = find_project_path()
     print(path)
     degrees = '{ deg: [90, 0, 90]}'
+    driver1 = '!InverseDynamicsDriver {}'
+    driver2 = '!SchunkWsgDriver {}'
     scenario_data = f"""
 directives:
 - add_model:
@@ -61,6 +63,7 @@ directives:
         iiwa_joint_5: [0]
         iiwa_joint_6: [ 1.6]
         iiwa_joint_7: [0]
+
 - add_model:
     name: wsg
     file: package://drake/manipulation/models/wsg_50_description/sdf/schunk_wsg_50_no_tip.sdf
@@ -79,14 +82,17 @@ directives:
     child: rock2::Cliff_Rock_One_OBJ
     X_PC:
         translation: [-1, -1, 0]
+model_drivers:
+    iiwa: {driver1}
+    wsg: {driver2}
 """
     print(scenario_data)
     #add mountains
     # scenario_data += get_mountain_yaml(obstables)
     
     scenario = load_scenario(data=scenario_data)
-    station = builder.AddSystem(MakeManipulationStation(filename="file:///workspaces/6.4210_project/drake_obstacles_nopkg.dmd.yaml"))
-    # station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
+    # station = builder.AddSystem(MfakeManipulationStation(filename="file:///workspaces/6.4210_project/drake_obstacles_nopkg.dmd.yaml"))
+    station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
     plant = station.GetSubsystemByName("plant")
     scene_graph = station.GetSubsystemByName("scene_graph")
@@ -105,15 +111,16 @@ directives:
     # )
 
     diagram = builder.Build()
+    notebook_plot_diagram(diagram)
 
     context = plant.CreateDefaultContext()
     gripper = plant.GetBodyByName("body")
 
     initial_pose = plant.EvalBodyPoseInWorld(context, gripper)
 
-    simulator = Simulator(diagram)
-    simulator.set_target_realtime_rate(1.0)
-    simulator.AdvanceTo(0.01)
+    # simulator = Simulator(diagram)
+    # simulator.set_target_realtime_rate(1.0)
+    # simulator.AdvanceTo(0.01)
     # context = station.CreateDefaultContext()
 
     # # station.GetInputPort("wsg.position").FixValue(context, [0.1])
