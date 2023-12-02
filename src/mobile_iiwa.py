@@ -30,7 +30,7 @@ from manipulation import ConfigureParser, running_as_notebook
 # from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.station import MakeHardwareStation, load_scenario
 
-from utils import find_project_path, notebook_plot_diagram
+from utils import find_project_path, notebook_plot_diagram, create_q_knots
 from mountain_building import get_mountain_yaml
 import pydot
 from IPython.display import display, Image, SVG
@@ -44,7 +44,7 @@ def notebook_plot_diagram_svg(diagram):
     ].create_svg()
 )
 
-def setup_hardware_station(meshcat, obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
+def setup_hardware_station(meshcat, final_pose = RigidTransform([0.5, 0.5, 0.1]), obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
 
     builder = DiagramBuilder()
     path = find_project_path()
@@ -58,13 +58,23 @@ directives:
     name: iiwa
     file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
     default_joint_positions:
-        iiwa_joint_1: [-1.57]
-        iiwa_joint_2: [0.1]
-        iiwa_joint_3: [0]
-        iiwa_joint_4: [-1.2]
-        iiwa_joint_5: [0]
-        iiwa_joint_6: [ 1.6]
-        iiwa_joint_7: [0]
+        iiwa_joint_1: [0.81737796]
+        iiwa_joint_2: [1.26516111]
+        iiwa_joint_3: [0.28494653]
+        iiwa_joint_4: [-1.38298128]
+        iiwa_joint_5: [0.85251895]
+        iiwa_joint_6: [-1.36210458]
+        iiwa_joint_7: [0.98480138]
+        # iiwa_joint_1: [-1.57]
+        # iiwa_joint_2: [0.1]
+        # iiwa_joint_3: [0]
+        # iiwa_joint_4: [-1.2]
+        # iiwa_joint_5: [0]
+        # iiwa_joint_6: [ 1.6]
+        # iiwa_joint_7: [0]
+        iiwa_base_x: [-5]
+        iiwa_base_y: [-5]
+        iiwa_base_z: [0]
 
 - add_model:
     name: wsg
@@ -88,7 +98,7 @@ model_drivers:
     iiwa: {driver1}
     wsg: {driver2}
 """
-    print(scenario_data)
+    # print(scenario_data)
     #add mountains
     # scenario_data += get_mountain_yaml(obstables)
     
@@ -97,6 +107,7 @@ model_drivers:
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
     plant = station.GetSubsystemByName("plant")
+    print(plant.GetStateNames())
     scene_graph = station.GetSubsystemByName("scene_graph")
     AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
 
@@ -117,15 +128,24 @@ model_drivers:
 
     initial_pose = plant.EvalBodyPoseInWorld(context, gripper)
 
-    t_lst = np.linspace(0, 10, 13)
-    q_poses = np.zeros((20,13))
-    q_poses[0:3, :]= np.array([[-5.0, -5.0, 3.141592653589793], [-5.0, -5.0, 1.5707963267948966], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 1.5707963267948966], [0.0, -2.5, 1.5707963267948966], [0.0, 0.0, 1.5707963267948966], [0.0, 2.5, 1.5707963267948966], [0.0, 5.0, 1.5707963267948966], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0]]).T
+    t_lst = np.linspace(0, 10, 15)
+    q_poses = np.zeros((20,15))
+    q_poses[0:3, :]= np.array([[-5.0, -5.0, 0], [-5.0, -5.0, 0], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 0], [0.0, -2.5, 0], [0.0, 0.0, 0], [0.0, 2.5, 0], [0.0, 5.0, 0], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0]]).T
+    #joint pose trial
+    q_final = create_q_knots([final_pose])[0][:7]
+
+    for i in [-1, -2]:
+        q_poses[3:10, i] = q_final #np.array([0.07080026,  1.47270634,  0.77810903, -1.28555459,  1.2570383 , 0.79680724,  0.4843345])
     q_traj = PiecewisePolynomial.CubicShapePreserving(t_lst, q_poses)
     q_traj_system = builder.AddSystem(TrajectorySource(q_traj)) 
     
     gripper_t_lst = np.array([0.0, 5.0, 6.0, 10.0])
-    gripper_knots = np.array([0.05, 0.05, 0.0, 0.0]).reshape(1, 4)
-    g_traj = PiecewisePolynomial.FirstOrderHold(gripper_t_lst, gripper_knots)
+    #test:
+    gripper_knots = np.array([0.0, 0.0, 0.0, 0.0]).reshape(1, 4)
+    g_traj = PiecewisePolynomial.CubicShapePreserving(gripper_t_lst, gripper_knots)
+    #working code:
+    # gripper_knots = np.array([0.05, 0.05, 0.0, 0.0]).reshape(1, 4)
+    # g_traj = PiecewisePolynomial.FirstOrderHold(gripper_t_lst, gripper_knots)
     g_traj_system = builder.AddSystem(TrajectorySource(g_traj)) 
 
     builder.Connect(
@@ -164,9 +184,9 @@ model_drivers:
 
 
 
-def set_position(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3)):
+def set_position(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3), final_pose = RigidTransform([0.5, 0.5, 0.1])):
     # diagram, plant, scene_graph = build_env(meshcat)
 
     # using hardware station
-    plant, station, scene_graph, diagram = setup_hardware_station(meshcat)
+    plant, station, scene_graph, diagram = setup_hardware_station(meshcat, final_pose =  final_pose)
     return diagram
