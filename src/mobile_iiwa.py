@@ -32,6 +32,7 @@ from manipulation.station import MakeHardwareStation, load_scenario
 
 from utils import find_project_path, notebook_plot_diagram, create_q_knots
 from mountain_building import get_mountain_yaml
+from trajectory_planning import trajectory_plan
 import pydot
 from IPython.display import display, Image, SVG
 import math
@@ -44,7 +45,7 @@ def notebook_plot_diagram_svg(diagram):
     ].create_svg()
 )
 
-def setup_hardware_station(meshcat, final_pose = RigidTransform([0.5, 0.5, 0.1]), obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
+def setup_hardware_station(meshcat, goal = (5,5), final_pose = RigidTransform([0.5, 0.5, 0.1]), obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
 
     builder = DiagramBuilder()
     path = find_project_path()
@@ -128,9 +129,12 @@ model_drivers:
 
     initial_pose = plant.EvalBodyPoseInWorld(context, gripper)
 
-    t_lst = np.linspace(0, 10, 15)
-    q_poses = np.zeros((20,15))
-    q_poses[0:3, :]= np.array([[-5.0, -5.0, 0], [-5.0, -5.0, 0], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 0], [0.0, -2.5, 0], [0.0, 0.0, 0], [0.0, 2.5, 0], [0.0, 5.0, 0], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0]]).T
+    traj = trajectory_plan(goal)
+    traj_len = len(traj)
+
+    t_lst = np.linspace(0, 10, traj_len+2)
+    q_poses = np.zeros((20, traj_len+2))
+    q_poses[0:3, :]= np.array(traj + [traj[-1], traj[-1]]).T #np.array([[-5.0, -5.0, 0], [-5.0, -5.0, 0], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 0], [0.0, -2.5, 0], [0.0, 0.0, 0], [0.0, 2.5, 0], [0.0, 5.0, 0], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0]]).T
     #joint pose trial
     q_final = create_q_knots([final_pose])[0][:7]
 
@@ -184,9 +188,9 @@ model_drivers:
 
 
 
-def set_position(meshcat, X_WG, max_tries=10, fix_base=False, base_pose=np.zeros(3), final_pose = RigidTransform([0.5, 0.5, 0.1])):
+def set_position(meshcat, X_WG, goal = (5,5), max_tries=10, fix_base=False, base_pose=np.zeros(3), final_pose = RigidTransform([0.5, 0.5, 0.1])):
     # diagram, plant, scene_graph = build_env(meshcat)
 
     # using hardware station
-    plant, station, scene_graph, diagram = setup_hardware_station(meshcat, final_pose =  final_pose)
+    plant, station, scene_graph, diagram = setup_hardware_station(meshcat, final_pose =  final_pose, goal = goal)
     return diagram

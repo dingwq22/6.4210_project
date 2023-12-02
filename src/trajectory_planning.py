@@ -307,7 +307,7 @@ def get_astar_plan(grid_init = None, step_budget = 1000):
     result = run_best_first_search(grid_problem, get_priority = get_priority_fn, step_budget = step_budget)
     if not result:
        return None
-    print([i[:3] for i in result[0]])
+    # print([i[:3] for i in result[0]])
     return result
 
 direction_map = {
@@ -317,12 +317,32 @@ direction_map = {
     2: 3/2*np.pi
 }
 
-def get_trajectory(states):
+def get_trajectory_from_states(states):
     traj = []
     coord_f = lambda x: 2.5*x-7.5
     for (r, c, d, x, y) in states:
-        traj.append([coord_f(r), coord_f(c), direction_map[d]])
+        traj.append([coord_f(r), coord_f(c), 0])
     return traj
+
+map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
+                ['WG', '3^', '  ', '  ', 'WG', 'WG', 'WG'],
+                ['WG', '  ', 'WG', 'WG', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', 'WG', 'WG', '  ', 'WG', '  ', 'WG'],
+                ['WG', 'WG', 'WG', '  ', '  ', '  ', 'WG'],
+                ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
+
+def trajectory_plan(goal = (5,5)):
+  reverse_coord_f = lambda x: int((x+7.5)/2.5) 
+  print(goal[0], int((goal[0]+7.5)/2.5) )
+  goal = (reverse_coord_f(goal[0]), reverse_coord_f(goal[1]))
+  print('actual goal', goal)
+  curr_map = map_default.copy()
+  curr_map[goal[0], goal[1]] = 'GG'
+  # print(curr_map)
+  result = get_astar_plan(curr_map,step_budget =1000)
+  return get_trajectory_from_states(result[0])
+
 
 
 
@@ -347,4 +367,7 @@ g = GridProblem(maps2)
 # print(parse_map(maps))
 # print(g.actions((1, 1, 0, (), False)))
 result = get_astar_plan(maps2,step_budget =1000)
-print(get_trajectory(result[0]))
+
+# print(get_trajectory_from_states(result[0]))
+traj = trajectory_plan([5,5])
+print(np.array(traj + [traj[-1], traj[-1]]))
