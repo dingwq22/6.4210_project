@@ -1,4 +1,4 @@
-
+from pydrake.all import RigidTransform
 from typing import (Callable, Iterable, List, Sequence, Tuple, Dict, Optional,
                     Any, Union)
 
@@ -332,10 +332,14 @@ map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
                 ['WG', 'WG', 'WG', '  ', '  ', '  ', 'WG'],
                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 
-def trajectory_plan(goal = (5,5)):
+def trajectory_plan(goal=(5,5), gripper_pose=None):
   reverse_coord_f = lambda x: int((x+7.5)/2.5) 
   print(goal[0], int((goal[0]+7.5)/2.5) )
   goal = (reverse_coord_f(goal[0]), reverse_coord_f(goal[1]))
+  # if not (gripper_pose == None): 
+    # gripper_pose = gripper_pose.translation()
+    # modifiy_goal = lambda x,y: int(x - y)
+    # goal = [modifiy_goal(goal[0], gripper_pose[0]), modifiy_goal(goal[1], gripper_pose[1])]
   print('actual goal', goal)
   curr_map = map_default.copy()
   curr_map[goal[0], goal[1]] = 'GG'

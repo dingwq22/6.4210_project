@@ -19,7 +19,7 @@
         <geometry>
           <mesh>
             <uri>Cliff_Rock_One_OBJ.obj</uri>
-            <scale>0.006 0.006 0.006</scale>
+            <scale>0.0008 0.0008 0.0008</scale>
           </mesh>
         </geometry>
       </visual>
@@ -28,7 +28,7 @@
         <geometry>
           <mesh>
             <uri>Cliff_Rock_One_OBJ.obj</uri>
-            <scale>0.006 0.006 0.006</scale>
+            <scale>0.0008 0.0008 0.0008</scale>
           </mesh>
         </geometry>
         <!-- The proximity properties immediately below enable the hydroelastic

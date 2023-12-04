@@ -30,22 +30,18 @@ from manipulation import ConfigureParser, running_as_notebook
 # from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.station import MakeHardwareStation, load_scenario
 
-from utils import find_project_path, notebook_plot_diagram, create_q_knots
+from utils import find_project_path, notebook_plot_diagram
+from convert_pose import create_q_knots
 from mountain_building import get_mountain_yaml
 from trajectory_planning import trajectory_plan
+
 import pydot
 from IPython.display import display, Image, SVG
 import math
 import os
 
-def notebook_plot_diagram_svg(diagram):
-    return SVG(
-    pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=1))[
-        0
-    ].create_svg()
-)
 
-def setup_hardware_station(meshcat, goal = (5,5), final_pose = RigidTransform([0.5, 0.5, 0.1]), obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
+def setup_hardware_station(meshcat, goal, gripper_poses, obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
 
     builder = DiagramBuilder()
     path = find_project_path()
@@ -94,7 +90,8 @@ directives:
     parent: world
     child: rock2::Cliff_Rock_One_OBJ
     X_PC:
-        translation: [-1, -1, 0]
+        # translation: [-1, -1, 0]
+        translation: [-1.97, -2.43, 0.01]
 model_drivers:
     iiwa: {driver1}
     wsg: {driver2}
@@ -104,7 +101,6 @@ model_drivers:
     # scenario_data += get_mountain_yaml(obstables)
     
     scenario = load_scenario(data=scenario_data)
-    # station = builder.AddSystem(MfakeManipulationStation(filename="file:///workspaces/6.4210_project/drake_obstacles_nopkg.dmd.yaml"))
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
     plant = station.GetSubsystemByName("plant")
@@ -119,9 +115,9 @@ model_drivers:
         MeshcatVisualizerParams(delete_on_initialization_event=False),
     )
 
-    wsg_position = builder.AddSystem(ConstantVectorSource([0.1]))
+    # wsg_position = builder.AddSystem(ConstantVectorSource([0.1]))
     # builder.Connect(
-    #     wsg_position.get_output_port(), station.GetInputPort("wsg_position")
+    #     wsg_position.get_output_port(), station.GetInputPort("wsg.position")
     # )
 
     context = plant.CreateDefaultContext()
@@ -132,20 +128,27 @@ model_drivers:
     traj = trajectory_plan(goal)
     traj_len = len(traj)
 
-    t_lst = np.linspace(0, 10, traj_len+2)
-    q_poses = np.zeros((20, traj_len+2))
-    q_poses[0:3, :]= np.array(traj + [traj[-1], traj[-1]]).T #np.array([[-5.0, -5.0, 0], [-5.0, -5.0, 0], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 0], [0.0, -2.5, 0], [0.0, 0.0, 0], [0.0, 2.5, 0], [0.0, 5.0, 0], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0]]).T
-    #joint pose trial
-    q_final = create_q_knots([final_pose])[0][:7]
+    duration = 10
+    gripper_traj_len = len(gripper_poses)
+    unit_time = duration / (traj_len + gripper_traj_len)
+    print("unit_time=", unit_time)
 
-    for i in [-1, -2]:
-        q_poses[3:10, i] = q_final #np.array([0.07080026,  1.47270634,  0.77810903, -1.28555459,  1.2570383 , 0.79680724,  0.4843345])
+    t_lst = np.linspace(0, duration, traj_len + gripper_traj_len)
+    q_poses = np.zeros((20, traj_len + gripper_traj_len))
+    # set iiwa to the last traj pos when gripper is moving 
+    q_poses[0:3, :]= np.array(traj + [traj[-1]]*gripper_traj_len).T #np.array([[-5.0, -5.0, 0], [-5.0, -5.0, 0], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 0], [0.0, -2.5, 0], [0.0, 0.0, 0], [0.0, 2.5, 0], [0.0, 5.0, 0], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0]]).T
+    # find joint positions from end-effector pose
+    joint_pos_lst = create_q_knots(gripper_poses)  # shape=(gripper_traj_len, 7)
+    
+    for i in range(gripper_traj_len):
+        q_poses[3:10, traj_len+i] = joint_pos_lst[i][:7]
     q_traj = PiecewisePolynomial.CubicShapePreserving(t_lst, q_poses)
     q_traj_system = builder.AddSystem(TrajectorySource(q_traj)) 
+    print("q_traj:", q_traj)
     
-    gripper_t_lst = np.array([0.0, 5.0, 6.0, 10.0])
+    gripper_t_lst = np.array([0.0, unit_time*(traj_len), unit_time*(traj_len+2), duration])
     #test:
-    gripper_knots = np.array([0.0, 0.0, 0.0, 0.0]).reshape(1, 4)
+    gripper_knots = np.array([0.8, 0.8, 0.2, 0]).reshape(1, 4)
     g_traj = PiecewisePolynomial.CubicShapePreserving(gripper_t_lst, gripper_knots)
     #working code:
     # gripper_knots = np.array([0.05, 0.05, 0.0, 0.0]).reshape(1, 4)
@@ -160,37 +163,19 @@ model_drivers:
     )
 
     diagram = builder.Build()
-    # notebook_plot_diagram(diagram)
     simulator = Simulator(diagram)
     visualizer.StartRecording(False)
-    duration = 10
+    
     simulator.AdvanceTo(duration)
     visualizer.PublishRecording()
 
-    # q_traj_system = builder.AddSystem(TrajectorySource(q_traj)) 
-
-    # simulator = Simulator(diagram)
-    # simulator.set_target_realtime_rate(1.0)
-    # simulator.AdvanceTo(0.01)
-    # context = station.CreateDefaultContext()
-
-    # # station.GetInputPort("wsg.position").FixValue(context, [0.1])
-    # station.ForcedPublish(context)
-    # # print(station.get_input_port(1))
-   
-    # plant = station.GetSubsystemByName("plant")
-
-    print('plotting')
-    
-    
-    # print(notebook_plot_diagram_svg(diagram))
     return station, plant, scene_graph, diagram
 
 
 
-def set_position(meshcat, X_WG, goal = (5,5), max_tries=10, fix_base=False, base_pose=np.zeros(3), final_pose = RigidTransform([0.5, 0.5, 0.1])):
+def set_position(meshcat, X_WG, goal = (5,5), max_tries=10, fix_base=False, base_pose=np.zeros(3), gripper_poses=[RigidTransform([0.5, 0.5, 0.1])]):
     # diagram, plant, scene_graph = build_env(meshcat)
 
     # using hardware station
-    plant, station, scene_graph, diagram = setup_hardware_station(meshcat, final_pose =  final_pose, goal = goal)
+    plant, station, scene_graph, diagram = setup_hardware_station(meshcat, gripper_poses=gripper_poses, goal=goal)
     return diagram
