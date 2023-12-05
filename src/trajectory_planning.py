@@ -278,7 +278,7 @@ def run_best_first_search(
         if not curr_node:
           break
       # print(state_sequence)
-      print(cost_sequence[:-1][::-1])
+      # print(cost_sequence[:-1][::-1])
       return state_sequence[::-1], action_sequence[:-1][::-1], cost_sequence[:-1][::-1], count
 
     for a in problem.actions(s):
@@ -319,9 +319,8 @@ direction_map = {
 
 def get_trajectory_from_states(states):
     traj = []
-    coord_f = lambda x: 2.5*x-7.5
     for (r, c, d, x, y) in states:
-        traj.append([coord_f(r), coord_f(c), 0])
+        traj.append([2*c-6, -2*r+6, 0])
     return traj
 
 map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
@@ -332,20 +331,18 @@ map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
                 ['WG', 'WG', 'WG', '  ', '  ', '  ', 'WG'],
                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 
-def trajectory_plan(goal=(5,5), gripper_pose=None):
-  reverse_coord_f = lambda x: int((x+7.5)/2.5) 
-  print(goal[0], int((goal[0]+7.5)/2.5) )
-  goal = (reverse_coord_f(goal[0]), reverse_coord_f(goal[1]))
-  # if not (gripper_pose == None): 
-    # gripper_pose = gripper_pose.translation()
-    # modifiy_goal = lambda x,y: int(x - y)
-    # goal = [modifiy_goal(goal[0], gripper_pose[0]), modifiy_goal(goal[1], gripper_pose[1])]
-  print('actual goal', goal)
+def trajectory_plan(goal=(5,-5), gripper_pose=None):
+  x, y = goal 
+  print('map goal (x, y):', goal)
+  goal = (round(-0.5*y + 3), round(0.5*x + 3)) #r, c
+  print('grid goa (r, c)', goal)
   curr_map = map_default.copy()
   curr_map[goal[0], goal[1]] = 'GG'
-  # print(curr_map)
   result = get_astar_plan(curr_map,step_budget =1000)
-  return get_trajectory_from_states(result[0])
+  print('traj in grid coord:', result[0])
+  total_traj = get_trajectory_from_states(result[0]) + [[x, y, 0]]
+  print('traj in xy coord:', total_traj)
+  return total_traj 
 
 
 
@@ -367,11 +364,9 @@ maps2 = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
 # add inverse dynamics controller
 # actuation import port -> choose inverse dynamics
 
-g = GridProblem(maps2)
-# print(parse_map(maps))
-# print(g.actions((1, 1, 0, (), False)))
-result = get_astar_plan(maps2,step_budget =1000)
+# g = GridProblem(maps2)
+# # print(parse_map(maps))
+# # print(g.actions((1, 1, 0, (), False)))
+# result = get_astar_plan(maps2,step_budget =1000)
 
-# print(get_trajectory_from_states(result[0]))
-traj = trajectory_plan([5,5])
-print(np.array(traj + [traj[-1], traj[-1]]))
+traj = trajectory_plan([3.1, 0])
