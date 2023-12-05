@@ -6,23 +6,23 @@
         <mass>0.1</mass>
       </inertial>
       <visual name="visual">
-        <pose>0 0 -0.5 0 0 0</pose>
+        <pose>0 0 -0.1 0 0 0</pose>
         <geometry>
           <box>
-            <size>10 10 1</size>
+            <size>15 15 0.01</size>
           </box>
         </geometry>
       </visual>
       <collision name="collision">
-        <pose>0 0 -0.5 0 0 0</pose>
+        <pose>0 0 -0.1 0 0 0</pose>
         <geometry>
           <box>
-            <size>10 10 1</size>
+            <size>15 15 0.01</size>
           </box>
         </geometry>
       </collision>
     </link>
-    <link name="wall">
+    <!-- <link name="wall">
       <inertial>
         <mass>0.1</mass>
       </inertial>
@@ -125,6 +125,6 @@
         <parent>base</parent>
         <child>wall4</child>
         <pose>0 0 0 0 0 0</pose>
-    </joint>
+    </joint> -->
   </model>
 </sdf>
