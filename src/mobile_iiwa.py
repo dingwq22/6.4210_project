@@ -115,7 +115,7 @@ directives:
     file: file://{path}/objects/obstacle_boxes.sdf
     default_free_body_pose:
         obstacles:
-            translation: [-1.97, -2.43, 0.01]
+            translation: [-2, -2.43, 0.01]
 
 model_drivers:
     iiwa: {driver1}
@@ -167,16 +167,15 @@ model_drivers:
     q_poses[0:3, :]= np.array(traj + [traj[-1]]*gripper_traj_len).T #np.array([[-5.0, -5.0, 0], [-5.0, -5.0, 0], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 0], [0.0, -2.5, 0], [0.0, 0.0, 0], [0.0, 2.5, 0], [0.0, 5.0, 0], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0]]).T
     # find joint positions from end-effector pose
     joint_pos_lst = create_q_knots(gripper_poses)  # shape=(gripper_traj_len, 7)
-    
+    print('gripper_traj_len', gripper_traj_len)
     for i in range(gripper_traj_len):
         q_poses[3:10, traj_len+i] = joint_pos_lst[i][:7]
+    print('q poses', q_poses[3:10, traj_len+1:])
     q_traj = PiecewisePolynomial.CubicShapePreserving(t_lst, q_poses)
     q_traj_system = builder.AddSystem(TrajectorySource(q_traj)) 
-    print("q_traj:", q_traj)
-    
-    
+     
     gripper_t_lst = np.array([0.0, unit_time*(traj_len), unit_time*(traj_len+2), duration])
-    gripper_knots = np.array([0.8, 0.8, 0.2, 0]).reshape(1, 4)
+    gripper_knots = np.array([1, 1, 0.2, 0]).reshape(1, 4)
     #test:
     # gripper_t_lst = np.array([0.0, unit_time*(traj_len), unit_time*(traj_len+1), unit_time*(traj_len+6), duration])
     # gripper_knots = np.array([0, 0, 0, 0, 0]).reshape(1, 5)
