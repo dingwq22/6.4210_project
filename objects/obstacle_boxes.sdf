@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<sdf version="1.5">
+<sdf xmlns:drake="http://drake.mit.edu" version="1.8">
   <model name="box">
     <link name="obstacles">
       <inertial>
@@ -9,8 +9,8 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.01</radius>
-            <length>0.8509</length>
+            <radius>0.05</radius>
+            <length>0.25</length>
           </cylinder>
         </geometry>
         <material>
@@ -21,10 +21,16 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.01</radius>
-            <length>0.8509</length>
+            <radius>0.05</radius>
+            <length>0.25</length>
           </cylinder>
         </geometry>
+        <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>
+          <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
+        </drake:proximity_properties>
       </collision>
     </link>
   </model>

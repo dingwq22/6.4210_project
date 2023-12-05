@@ -23,6 +23,7 @@ from pydrake.all import (
     RigidTransform,
     InverseDynamicsController,
     TrajectorySource,
+    Cylinder,
 )
 from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.station import MakeHardwareStation
@@ -51,6 +52,15 @@ def setup_hardware_station(meshcat, goal, gripper_poses, obstables = [(1, 4), (1
     driver2 = '!SchunkWsgDriver {}'
     scenario_data = f"""
 directives:
+- add_model:
+    name: ground
+    file: file://{path}/objects/ground.sdf
+- add_weld:
+    parent: world
+    child: ground::base
+    X_PC:
+        translation: [0, 0, 0]
+
 - add_model:
     name: iiwa
     file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
@@ -83,15 +93,23 @@ directives:
         translation: [0, 0, 0.114]
         rotation: !Rpy {degrees}
 
+# - add_model:
+#     name: rock2
+#     file: file://{path}/objects/Cliff_Rock_One_OBJ.sdf
+# - add_weld:
+#     parent: world
+#     child: rock2::Cliff_Rock_One_OBJ
+#     X_PC:
+#         # translation: [-1, -1, 0]
+#         translation: [-1.97, -2.43, 0.01]
+        
 - add_model:
-    name: rock2
-    file: file://{path}/objects/Cliff_Rock_One_OBJ.sdf
-- add_weld:
-    parent: world
-    child: rock2::Cliff_Rock_One_OBJ
-    X_PC:
-        # translation: [-1, -1, 0]
-        translation: [-1.97, -2.43, 0.01]
+    name: object1
+    file: file://{path}/objects/obstacle_boxes.sdf
+    default_free_body_pose:
+        obstacles:
+            translation: [-1.97, -2.43, 0.01]
+
 model_drivers:
     iiwa: {driver1}
     wsg: {driver2}
@@ -106,7 +124,7 @@ model_drivers:
     plant = station.GetSubsystemByName("plant")
     print(plant.GetStateNames())
     scene_graph = station.GetSubsystemByName("scene_graph")
-    AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
+    # AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
 
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder,
