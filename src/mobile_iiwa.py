@@ -23,7 +23,6 @@ from pydrake.all import (
     RigidTransform,
     InverseDynamicsController,
     TrajectorySource,
-    Cylinder,
 )
 from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.station import MakeHardwareStation
@@ -50,17 +49,9 @@ def setup_hardware_station(meshcat, goal, gripper_poses, obstables = [(1, 4), (1
     degrees = '{ deg: [90, 0, 90]}'
     driver1 = '!InverseDynamicsDriver {}'
     driver2 = '!SchunkWsgDriver {}'
+    degstr = '{ deg: [0.0, 0.0, 180.0 ]}'
     scenario_data = f"""
 directives:
-- add_model:
-    name: ground
-    file: file://{path}/objects/ground.sdf
-- add_weld:
-    parent: world
-    child: ground::base
-    X_PC:
-        translation: [0, 0, 0]
-
 - add_model:
     name: iiwa
     file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
@@ -79,9 +70,10 @@ directives:
         # iiwa_joint_5: [0]
         # iiwa_joint_6: [ 1.6]
         # iiwa_joint_7: [0]
-        iiwa_base_x: [-5]
-        iiwa_base_y: [-5]
+        iiwa_base_x: [-4]
+        iiwa_base_y: [4]
         iiwa_base_z: [0]
+
 
 - add_model:
     name: wsg
@@ -92,7 +84,14 @@ directives:
     X_PC:
         translation: [0, 0, 0.114]
         rotation: !Rpy {degrees}
-
+- add_model:
+    name: ground
+    file: file://{path}/objects/ground.sdf
+- add_weld:
+    parent: world
+    child: ground::base
+    X_PC:
+        translation: [0, 0, 0]
 # - add_model:
 #     name: rock2
 #     file: file://{path}/objects/Cliff_Rock_One_OBJ.sdf
@@ -102,7 +101,15 @@ directives:
 #     X_PC:
 #         # translation: [-1, -1, 0]
 #         translation: [-1.97, -2.43, 0.01]
-        
+- add_model:
+    name: bin1
+    file: package://manipulation/hydro/bin.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_0
+    child: bin1::bin_base
+    X_PC:
+        translation: [-.5, 0, 0]
+
 - add_model:
     name: object1
     file: file://{path}/objects/obstacle_boxes.sdf
@@ -113,6 +120,8 @@ directives:
 model_drivers:
     iiwa: {driver1}
     wsg: {driver2}
+
+
 """
     # print(scenario_data)
     #add mountains
@@ -145,6 +154,7 @@ model_drivers:
 
     traj = trajectory_plan(goal)
     traj_len = len(traj)
+    print(traj_len)
 
     duration = 10
     gripper_traj_len = len(gripper_poses)
@@ -164,9 +174,12 @@ model_drivers:
     q_traj_system = builder.AddSystem(TrajectorySource(q_traj)) 
     print("q_traj:", q_traj)
     
+    
     gripper_t_lst = np.array([0.0, unit_time*(traj_len), unit_time*(traj_len+2), duration])
-    #test:
     gripper_knots = np.array([0.8, 0.8, 0.2, 0]).reshape(1, 4)
+    #test:
+    # gripper_t_lst = np.array([0.0, unit_time*(traj_len), unit_time*(traj_len+1), unit_time*(traj_len+6), duration])
+    # gripper_knots = np.array([0, 0, 0, 0, 0]).reshape(1, 5)
     g_traj = PiecewisePolynomial.CubicShapePreserving(gripper_t_lst, gripper_knots)
     #working code:
     # gripper_knots = np.array([0.05, 0.05, 0.0, 0.0]).reshape(1, 4)
