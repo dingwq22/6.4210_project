@@ -41,7 +41,7 @@ import math
 import os
 
 
-def setup_hardware_station(meshcat, goal, gripper_poses, obstables = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
+def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
 
     builder = DiagramBuilder()
     path = find_project_path()
@@ -125,7 +125,7 @@ model_drivers:
 """
     # print(scenario_data)
     #add mountains
-    # scenario_data += get_mountain_yaml(obstables)
+    # scenario_data += get_mountain_yaml(obstacles)
     
     scenario = load_scenario(data=scenario_data)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
@@ -154,35 +154,36 @@ model_drivers:
 
     traj = trajectory_plan(goal)
     traj_len = len(traj)
-    print(traj_len)
+    
 
     duration = 10
     gripper_traj_len = len(gripper_poses)
     unit_time = duration / (traj_len + gripper_traj_len)
-    print("unit_time=", unit_time)
+    print("trag_len:"traj_len)
+    print('gripper_traj_len:', gripper_traj_len)
+    print("unit_time:", unit_time)
 
     t_lst = np.linspace(0, duration, traj_len + gripper_traj_len)
     q_poses = np.zeros((20, traj_len + gripper_traj_len))
     # set iiwa to the last traj pos when gripper is moving 
-    q_poses[0:3, :]= np.array(traj + [traj[-1]]*gripper_traj_len).T #np.array([[-5.0, -5.0, 0], [-5.0, -5.0, 0], [-5.0, -5.0, 0], [-2.5, -5.0, 0], [0.0, -5.0, 0], [0.0, -5.0, 0], [0.0, -2.5, 0], [0.0, 0.0, 0], [0.0, 2.5, 0], [0.0, 5.0, 0], [0.0, 5.0, 0], [2.5, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0], [5.0, 5.0, 0]]).T
+    q_poses[0:3, :]= np.array(traj + [traj[-1]]*gripper_traj_len).T 
+    
     # find joint positions from end-effector pose
     joint_pos_lst = create_q_knots(gripper_poses)  # shape=(gripper_traj_len, 7)
-    print('gripper_traj_len', gripper_traj_len)
+    
+    # iiwa joints trajectory 
     for i in range(gripper_traj_len):
         q_poses[3:10, traj_len+i] = joint_pos_lst[i][:7]
     print('q poses', q_poses[3:10, traj_len+1:])
     q_traj = PiecewisePolynomial.CubicShapePreserving(t_lst, q_poses)
     q_traj_system = builder.AddSystem(TrajectorySource(q_traj)) 
      
-    gripper_t_lst = np.array([0.0, unit_time*(traj_len), unit_time*(traj_len+2), duration])
-    gripper_knots = np.array([1, 1, 0.2, 0]).reshape(1, 4)
-    #test:
-    # gripper_t_lst = np.array([0.0, unit_time*(traj_len), unit_time*(traj_len+1), unit_time*(traj_len+6), duration])
-    # gripper_knots = np.array([0, 0, 0, 0, 0]).reshape(1, 5)
+    # gripper trajectory 
+    gripper_close_t = unit_time*(traj_len+2)
+    gripper_open_t = duration - unit_time*1
+    gripper_t_lst = np.array([0.0, unit_time*(traj_len), gripper_close_t,  gripper_open_t, duration])
+    gripper_knots = np.array([1, 1, 0.1, 0, 1]).reshape(1, len(gripper_t_lst))
     g_traj = PiecewisePolynomial.CubicShapePreserving(gripper_t_lst, gripper_knots)
-    #working code:
-    # gripper_knots = np.array([0.05, 0.05, 0.0, 0.0]).reshape(1, 4)
-    # g_traj = PiecewisePolynomial.FirstOrderHold(gripper_t_lst, gripper_knots)
     g_traj_system = builder.AddSystem(TrajectorySource(g_traj)) 
 
     builder.Connect(
