@@ -1,5 +1,8 @@
 import numpy as np
 from pydrake.all import (
+    AbstractValue,
+    PointCloud,
+    LeafSystem,
     ConstantVectorSource,
     InverseDynamicsController,
     DiagramBuilder,
@@ -25,7 +28,12 @@ from pydrake.all import (
     TrajectorySource,
 )
 from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
-from manipulation.station import MakeHardwareStation
+from manipulation.station import (
+    AddPointClouds,
+    MakeHardwareStation,
+    add_directives,
+    load_scenario,
+)
 from manipulation import ConfigureParser, running_as_notebook
 # from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.station import MakeHardwareStation, load_scenario
@@ -40,6 +48,91 @@ from IPython.display import display, Image, SVG
 import math
 import os
 
+def make_internal_model():
+    builder = DiagramBuilder()
+    plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=0.001)
+    parser = Parser(plant)
+    ConfigureParser(parser)
+    parser.AddModelsFromUrl("package://manipulation/clutter_planning.dmd.yaml")
+    plant.Finalize()
+    return builder.Build()
+
+# Takes 3 point clouds (in world coordinates) as input, and outputs and estimated pose for the mustard bottle.
+class GraspSelector(LeafSystem):
+    def __init__(self, plant, bin_instance, camera_body_indices):
+        LeafSystem.__init__(self)
+        model_point_cloud = AbstractValue.Make(PointCloud(0))
+        self.DeclareAbstractInputPort("cloud0_W", model_point_cloud)
+        self.DeclareAbstractInputPort("cloud1_W", model_point_cloud)
+        self.DeclareAbstractInputPort("cloud2_W", model_point_cloud)
+        self.DeclareAbstractInputPort(
+            "body_poses", AbstractValue.Make([RigidTransform()])
+        )
+
+        port = self.DeclareAbstractOutputPort(
+            "grasp_selection",
+            lambda: AbstractValue.Make((np.inf, RigidTransform())),
+            self.SelectGrasp,
+        )
+        port.disable_caching_by_default()
+
+        # Compute crop box.
+        context = plant.CreateDefaultContext()
+        bin_body = plant.GetBodyByName("bin_base", bin_instance)
+        X_B = plant.EvalBodyPoseInWorld(context, bin_body)
+        margin = 0.001  # only because simulation is perfect!
+        a = X_B.multiply(
+            [-0.22 + 0.025 + margin, -0.29 + 0.025 + margin, 0.015 + margin]
+        )
+        b = X_B.multiply([0.22 - 0.1 - margin, 0.29 - 0.025 - margin, 2.0])
+        self._crop_lower = np.minimum(a, b)
+        self._crop_upper = np.maximum(a, b)
+
+        self._internal_model = make_internal_model()
+        self._internal_model_context = (
+            self._internal_model.CreateDefaultContext()
+        )
+        self._rng = np.random.default_rng()
+        self._camera_body_indices = camera_body_indices
+
+    def SelectGrasp(self, context, output):
+        body_poses = self.get_input_port(3).Eval(context)
+        pcd = []
+        for i in range(3):
+            cloud = self.get_input_port(i).Eval(context)
+            pcd.append(cloud.Crop(self._crop_lower, self._crop_upper))
+            pcd[i].EstimateNormals(radius=0.1, num_closest=30)
+
+            # Flip normals toward camera
+            X_WC = body_poses[self._camera_body_indices[i]]
+            pcd[i].FlipNormalsTowardPoint(X_WC.translation())
+        merged_pcd = Concatenate(pcd)
+        down_sampled_pcd = merged_pcd.VoxelizedDownSample(voxel_size=0.005)
+
+        costs = []
+        X_Gs = []
+        # TODO(russt): Take the randomness from an input port, and re-enable
+        # caching.
+        for i in range(100 if running_as_notebook else 2):
+            cost, X_G = GenerateAntipodalGraspCandidate(
+                self._internal_model,
+                self._internal_model_context,
+                down_sampled_pcd,
+                self._rng,
+            )
+            if np.isfinite(cost):
+                costs.append(cost)
+                X_Gs.append(X_G)
+
+        if len(costs) == 0:
+            # Didn't find a viable grasp candidate
+            X_WG = RigidTransform(
+                RollPitchYaw(-np.pi / 2, 0, np.pi / 2), [0.5, 0, 0.22]
+            )
+            output.set_value((np.inf, X_WG))
+        else:
+            best = np.argmin(costs)
+            output.set_value((costs[best], X_Gs[best]))
 
 def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
 
@@ -50,6 +143,7 @@ def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1
     driver1 = '!InverseDynamicsDriver {}'
     driver2 = '!SchunkWsgDriver {}'
     degstr = '{ deg: [0.0, 0.0, 180.0 ]}'
+    camera1deg = '{ deg: [-130.0, 0, 90.0]}'
     scenario_data = f"""
 directives:
 - add_model:
@@ -116,17 +210,79 @@ directives:
     default_free_body_pose:
         obstacles:
             translation: [-2, -2.43, 0.01]
+    
+- add_frame:
+    name: camera0_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy {camera1deg}
+        translation: [.25, -.5, .4]
 
+- add_model:
+    name: camera0
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera0_origin
+    child: camera0::base
+
+- add_frame:
+    name: camera1_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy {camera1deg}
+        translation: [-0.05, -.7, .5]
+
+- add_model:
+    name: camera1
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera1_origin
+    child: camera1::base
+
+- add_frame:
+    name: camera2_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy {camera1deg}
+        translation: [-.35, -.25, .45]
+
+- add_model:
+    name: camera2
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera2_origin
+    child: camera2::base
+
+cameras:
+    camera0:
+      name: camera0
+      depth: True
+      X_PB:
+        base_frame: camera0::base
+
+    camera1:
+      name: camera1
+      depth: True
+      X_PB:
+        base_frame: camera1::base
+
+    camera2:
+      name: camera2
+      depth: True
+      X_PB:
+        base_frame: camera2::base
+"""
+    # print(scenario_data)
+    # add mountains
+    # scenario_data += get_mountain_yaml(obstables)
+    scenario_data += f'''
 model_drivers:
     iiwa: {driver1}
     wsg: {driver2}
-
-
-"""
-    # print(scenario_data)
-    #add mountains
-    # scenario_data += get_mountain_yaml(obstacles)
-    
+    '''
     scenario = load_scenario(data=scenario_data)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
@@ -149,6 +305,53 @@ model_drivers:
 
     context = plant.CreateDefaultContext()
     gripper = plant.GetBodyByName("body")
+
+    ### camera
+    # Export the camera outputs
+    # builder.ExportOutput(
+    #     station.GetOutputPort("camera.rgb_image"), "rgb_image"
+    # )
+    # builder.ExportOutput(
+    #     station.GetOutputPort("camera.depth_image"), "depth_image"
+    # )
+
+    # to_point_cloud = AddPointClouds(
+    #     scenario=scenario, station=station, builder=builder, meshcat=meshcat
+    # )
+    # print('point_cloud', to_point_cloud)
+    to_point_cloud = AddPointClouds(
+        scenario=scenario, station=station, builder=builder
+    )
+    print(to_point_cloud)
+    y_bin_grasp_selector = builder.AddSystem(
+        GraspSelector(
+            plant,
+            plant.GetModelInstanceByName("bin1"),
+            camera_body_indices=[
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[
+                    0
+                ],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[
+                    0
+                ],
+                plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[
+                    0
+                ],
+            ],
+        )
+    )
+    builder.Connect(
+        to_point_cloud["camera0"].get_output_port(),
+        y_bin_grasp_selector.get_input_port(0),
+    )
+    builder.Connect(
+        to_point_cloud["camera1"].get_output_port(),
+        y_bin_grasp_selector.get_input_port(1),
+    )
+    builder.Connect(
+        to_point_cloud["camera2"].get_output_port(),
+        y_bin_grasp_selector.get_input_port(2),
+    )
 
     initial_pose = plant.EvalBodyPoseInWorld(context, gripper)
 
@@ -192,6 +395,8 @@ model_drivers:
     builder.Connect(
         g_traj_system.get_output_port(), station.GetInputPort("wsg.position")
     )
+
+ 
 
     diagram = builder.Build()
     simulator = Simulator(diagram)
