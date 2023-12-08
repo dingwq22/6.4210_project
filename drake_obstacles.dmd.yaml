@@ -1,5 +1,37 @@
 directives:
 - add_model:
+    name: iiwa
+    file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
+    default_joint_positions:
+        iiwa_joint_1: [0.81737796]
+        iiwa_joint_2: [1.26516111]
+        iiwa_joint_3: [0.28494653]
+        iiwa_joint_4: [-1.38298128]
+        iiwa_joint_5: [0.85251895]
+        iiwa_joint_6: [-1.36210458]
+        iiwa_joint_7: [0.98480138]
+        # iiwa_joint_1: [-1.57]
+        # iiwa_joint_2: [0.1]
+        # iiwa_joint_3: [0]
+        # iiwa_joint_4: [-1.2]
+        # iiwa_joint_5: [0]
+        # iiwa_joint_6: [ 1.6]
+        # iiwa_joint_7: [0]
+        iiwa_base_x: [-4]
+        iiwa_base_y: [4]
+        iiwa_base_z: [0]
+
+
+- add_model:
+    name: wsg
+    file: package://drake/manipulation/models/wsg_50_description/sdf/schunk_wsg_50_no_tip.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_7
+    child: wsg::body
+    X_PC:
+        translation: [0, 0, 0.114]
+        rotation: !Rpy { deg: [90, 0, 90]}
+- add_model:
     name: ground
     file: package://moon/objects/ground.sdf
 - add_weld:
@@ -7,326 +39,102 @@ directives:
     child: ground::base
     X_PC:
         translation: [0, 0, 0]
-
-- add_model:
-    name: pr2
-    # file: package://manipulation/pr2_collision_fixed.urdf
-    file: package://moon/objects/pr2_simplified.urdf
 # - add_model:
-#     name: mecanum_base
-#     file: package://moon/objects/mecanum_base.urdf
-#     default_free_body_pose:
-#         chassis:
-#             translation: [0, 0, 0.055]
-# - add_model:
-#     name: mobile_iiwa
-#     file: package://manipulation/mobile_iiwa14_primitive_collision.urdf
-#     default_joint_positions:
-#         iiwa_joint_1: [-1.57]
-#         iiwa_joint_2: [0.1]
-#         iiwa_joint_3: [0]
-#         iiwa_joint_4: [-1.2]
-#         iiwa_joint_5: [0]
-#         iiwa_joint_6: [ 1.6]
-#         iiwa_joint_7: [0]
-    # model_drivers:
-    #     mobile_iiwa: !InverseDynamicsDriver {}
-
-# - add_model:
-#     name: iiwa_right
-#     file: package://drake/manipulation/models/iiwa_description/iiwa7/iiwa7_no_collision.sdf
-#     default_joint_positions:
-#         iiwa_joint_1: [-1.57]
-#         iiwa_joint_2: [0.1]
-#         iiwa_joint_3: [0]
-#         iiwa_joint_4: [-1.2]
-#         iiwa_joint_5: [0]
-#         iiwa_joint_6: [ 1.6]
-#         iiwa_joint_7: [0]
+#     name: rock2
+#     file: package://moon/objects/Cliff_Rock_One_OBJ.sdf
 # - add_weld:
-#     # parent: mecanum_base::chassis
 #     parent: world
-#     child: iiwa_right::iiwa_link_0
+#     child: rock2::Cliff_Rock_One_OBJ
 #     X_PC:
-#         translation: [0.5, 0, 0]
+#         # translation: [-1, -1, 0]
+#         translation: [-1.97, -2.43, 0.01]
+- add_model:
+    name: bin1
+    file: package://manipulation/hydro/bin.sdf
+- add_weld:
+    parent: iiwa::iiwa_link_0
+    child: bin1::bin_base
+    X_PC:
+        translation: [-.5, 0, 0]
+
+- add_model:
+    name: object1
+    file: package://moon/objects/obstacle_boxes.sdf
+    default_free_body_pose:
+        obstacles:
+            translation: [-2, -2.43, 0.01]
+- add_model:
+    name: object2
+    file: package://moon/objects/obstacle_boxes.sdf
+    default_free_body_pose:
+        obstacles:
+            translation: [0, 0, 0.01]
     
+- add_frame:
+    name: camera0_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-125., 0, 130]}
+        translation: [0.5, 0.5, .5] #[.25, -.5, .4]
 
 - add_model:
-    name: rock2
-    file: package://moon/objects/Cliff_Rock_One_OBJ.sdf
+    name: camera0
+    file: package://manipulation/camera_box.sdf
+
 - add_weld:
-    parent: world
-    child: rock2::Cliff_Rock_One_OBJ
-    X_PC:
-        translation: [-1, -1, 0.3]
+    parent: camera0_origin
+    child: camera0::base
+
+- add_frame:
+    name: camera1_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-125., 0, 0]}
+        translation: [0, -.7, .5] #-0.05
 
 - add_model:
-    name: mountain1
-    file: package://moon/objects/mountain_OBJ.sdf
+    name: camera1
+    file: package://manipulation/camera_box.sdf
+
 - add_weld:
-    parent: world
-    child: mountain1::mountain_OBJ
-    X_PC:
-        translation: [1, 1, 0]       
+    parent: camera1_origin
+    child: camera1::base
+
+- add_frame:
+    name: camera2_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy { deg: [-125.0, 0, -130]}
+        translation: [-0.5, 0.5, .5] #[-.35, -.25, .45]
 
 - add_model:
-    name: box
-    file: package://moon/objects/obstacles.sdf
+    name: camera2
+    file: package://manipulation/camera_box.sdf
+
 - add_weld:
-    parent: world
-    child: box::side_ramp
-    X_PC:
-        translation: [0, 0, 0]
-- add_model:
-    name: obstacle1
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [0.6096, 0, 0]
-- add_weld:
-    parent: world
-    child: obstacle1::obstacles
-    X_PC:
-        translation: [0.6096, 0, 0]
-- add_model:
-    name: obstacle2
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [-0.6096, 0, 0]
-- add_weld:
-    parent: world
-    child: obstacle2::obstacles
-    X_PC:
-        translation: [-0.6096, 0, 0]
-- add_model:
-    name: obstacle3
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [0, 0.6096, 0]
-- add_weld:
-    parent: world
-    child: obstacle3::obstacles
-    X_PC:
-        translation: [0, 0.6096, 0]
-- add_model:
-    name: obstacle4
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [0, -0.6096, 0]
-- add_weld:
-    parent: world
-    child: obstacle4::obstacles
-    X_PC:
-        translation: [0, -0.6096, 0]
-- add_model:
-    name: bump1
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [0.61, 0.61, 0]
-- add_weld:
-    parent: world
-    child: bump1::bumps
-    X_PC:
-        translation: [0.61, 0.61, 0]
-- add_model:
-    name: bump2
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-0.61, 0.61, 0]
-- add_weld:
-    parent: world
-    child: bump2::bumps
-    X_PC:
-        translation: [-0.61, 0.61, 0]
-- add_model:
-    name: bump3
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-0.61, -0.61, 0]
-- add_weld:
-    parent: world
-    child: bump3::bumps
-    X_PC:
-        translation: [-0.61, -0.61, 0]
-- add_model:
-    name: bump4
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [0.61, -0.61, 0]
-- add_weld:
-    parent: world
-    child: bump4::bumps
-    X_PC:
-        translation: [0.61, -0.61, 0]
-- add_model:
-    name: obstacle5
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [0, -1.25, 0]
-- add_weld:
-    parent: world
-    child: obstacle5::obstacles
-    X_PC:
-        translation: [0, -1.25, 0]
-- add_model:
-    name: obstacle6
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [0, 1.25, 0]
-- add_weld:
-    parent: world
-    child: obstacle6::obstacles
-    X_PC:
-        translation: [0, 1.25, 0]
-- add_model:
-    name: obstacle7
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [1.25, 0, 0]
-- add_weld:
-    parent: world
-    child: obstacle7::obstacles
-    X_PC:
-        translation: [1.25, 0, 0]
-- add_model:
-    name: obstacle8
-    file: package://moon/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [-1.25, 0, 0]
-- add_weld:
-    parent: world
-    child: obstacle8::obstacles
-    X_PC:
-        translation: [-1.25, 0, 0]
-- add_model:
-    name: bump5
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-1.22, -0.61, 0]
-- add_weld:
-    parent: world
-    child: bump5::bumps
-    X_PC:
-        translation: [-1.22, -0.61, 0]
-- add_model:
-    name: bump6
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-1.22, -1.22, 0]
-- add_weld:
-    parent: world
-    child: bump6::bumps
-    X_PC:
-        translation: [-1.22, -1.22, 0]
-- add_model:
-    name: bump7
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-0.61, -1.22, 0]
-- add_weld:
-    parent: world
-    child: bump7::bumps
-    X_PC:
-        translation: [-0.61, -1.22, 0]
-- add_model:
-    name: bump8
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [1.22, -0.61, 0]
-- add_weld:
-    parent: world
-    child: bump8::bumps
-    X_PC:
-        translation: [1.22, -0.61, 0]
-- add_model:
-    name: bump9
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [1.22, -1.22, 0]
-- add_weld:
-    parent: world
-    child: bump9::bumps
-    X_PC:
-        translation: [1.22, -1.22, 0]
-- add_model:
-    name: bump10
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [0.61, -1.22, 0]
-- add_weld:
-    parent: world
-    child: bump10::bumps
-    X_PC:
-        translation: [0.61, -1.22, 0]
-- add_model:
-    name: bump11
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-1.22, 0.61, 0]
-- add_weld:
-    parent: world
-    child: bump11::bumps
-    X_PC:
-        translation: [-1.22, 0.61, 0]
-- add_model:
-    name: bump12
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-1.22, 1.22, 0]
-- add_weld:
-    parent: world
-    child: bump12::bumps
-    X_PC:
-        translation: [-1.22, 1.22, 0]
-- add_model:
-    name: bump13
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [-0.61, 1.22, 0]
-- add_weld:
-    parent: world
-    child: bump13::bumps
-    X_PC:
-        translation: [-0.61, 1.22, 0]
-- add_model:
-    name: bump14
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [1.22, 0.61, 0]
-- add_weld:
-    parent: world
-    child: bump14::bumps
-    X_PC:
-        translation: [1.22, 0.61, 0]
-- add_model:
-    name: bump15
-    file: package://moon/objects/obstacles_bumps.sdf
-    default_free_body_pose:
-        bumps:
-            translation: [0.61, 1.22, 0]
-- add_weld:
-    parent: world
-    child: bump15::bumps
-    X_PC:
-        translation: [0.61, 1.22, 0]
+    parent: camera2_origin
+    child: camera2::base
+
+cameras:
+    camera0:
+      name: camera0
+      depth: True
+      X_PB:
+        base_frame: camera0::base
+
+    camera1:
+      name: camera1
+      depth: True
+      X_PB:
+        base_frame: camera1::base
+
+    camera2:
+      name: camera2
+      depth: True
+      X_PB:
+        base_frame: camera2::base
+
+model_drivers:
+    iiwa: !InverseDynamicsDriver {}
+    wsg: !SchunkWsgDriver {}
+    
