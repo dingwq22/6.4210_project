@@ -58,23 +58,23 @@ def make_internal_model():
     return builder.Build()
 
 # Takes 3 point clouds (in world coordinates) as input, and outputs and estimated pose for the mustard bottle.
-class GraspSelector(LeafSystem):
+class GraspSelector():
     def __init__(self, plant, bin_instance, camera_body_indices):
-        LeafSystem.__init__(self)
+        # LeafSystem.__init__(self)
         model_point_cloud = AbstractValue.Make(PointCloud(0))
-        self.DeclareAbstractInputPort("cloud0_W", model_point_cloud)
-        self.DeclareAbstractInputPort("cloud1_W", model_point_cloud)
-        self.DeclareAbstractInputPort("cloud2_W", model_point_cloud)
-        self.DeclareAbstractInputPort(
-            "body_poses", AbstractValue.Make([RigidTransform()])
-        )
+        # self.DeclareAbstractInputPort("cloud0_W", model_point_cloud)
+        # self.DeclareAbstractInputPort("cloud1_W", model_point_cloud)
+        # self.DeclareAbstractInputPort("cloud2_W", model_point_cloud)
+        # self.DeclareAbstractInputPort(
+        #     "body_poses", AbstractValue.Make([RigidTransform()])
+        # )
 
-        port = self.DeclareAbstractOutputPort(
-            "grasp_selection",
-            lambda: AbstractValue.Make((np.inf, RigidTransform())),
-            self.SelectGrasp,
-        )
-        port.disable_caching_by_default()
+        # port = self.DeclareAbstractOutputPort(
+        #     "grasp_selection",
+        #     lambda: AbstractValue.Make((np.inf, RigidTransform())),
+        #     self.SelectGrasp,
+        # )
+        # port.disable_caching_by_default()
 
         # Compute crop box.
         context = plant.CreateDefaultContext()
@@ -88,10 +88,11 @@ class GraspSelector(LeafSystem):
         self._crop_lower = np.minimum(a, b)
         self._crop_upper = np.maximum(a, b)
 
-        self._internal_model = make_internal_model()
-        self._internal_model_context = (
-            self._internal_model.CreateDefaultContext()
-        )
+        # self._internal_model = make_internal_model()
+        # self._internal_model_context = (
+        #     self._internal_model.CreateDefaultContext()
+        # )
+        self._internal_model_context = context
         self._rng = np.random.default_rng()
         self._camera_body_indices = camera_body_indices
 
@@ -126,6 +127,7 @@ class GraspSelector(LeafSystem):
 
         if len(costs) == 0:
             # Didn't find a viable grasp candidate
+            print('fail')
             X_WG = RigidTransform(
                 RollPitchYaw(-np.pi / 2, 0, np.pi / 2), [0.5, 0, 0.22]
             )
@@ -133,9 +135,12 @@ class GraspSelector(LeafSystem):
         else:
             best = np.argmin(costs)
             output.set_value((costs[best], X_Gs[best]))
+            print('output')
+            print((costs[best], X_Gs[best]))
 
 def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
-
+    x, y = goal
+    goal = (-0.545 + x, -0.07 + y)
     builder = DiagramBuilder()
     path = find_project_path()
     print(path)
@@ -143,7 +148,9 @@ def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1
     driver1 = '!InverseDynamicsDriver {}'
     driver2 = '!SchunkWsgDriver {}'
     degstr = '{ deg: [0.0, 0.0, 180.0 ]}'
-    camera1deg = '{ deg: [-130.0, 0, 90.0]}'
+    camera0deg = '{ deg: [-125., 0, 130]}' #[45, -125, 0]
+    camera1deg = '{ deg: [-125., 0, 0]}'
+    camera2deg = '{ deg: [-125.0, 0, -130]}'
     scenario_data = f"""
 directives:
 - add_model:
@@ -210,13 +217,19 @@ directives:
     default_free_body_pose:
         obstacles:
             translation: [-2, -2.43, 0.01]
+- add_model:
+    name: object2
+    file: file://{path}/objects/obstacle_boxes.sdf
+    default_free_body_pose:
+        obstacles:
+            translation: [0, 0, 0.01]
     
 - add_frame:
     name: camera0_origin
     X_PF:
         base_frame: world
-        rotation: !Rpy {camera1deg}
-        translation: [.25, -.5, .4]
+        rotation: !Rpy {camera0deg}
+        translation: [0.5, 0.5, .5] #[.25, -.5, .4]
 
 - add_model:
     name: camera0
@@ -231,7 +244,7 @@ directives:
     X_PF:
         base_frame: world
         rotation: !Rpy {camera1deg}
-        translation: [-0.05, -.7, .5]
+        translation: [0, -.7, .5] #-0.05
 
 - add_model:
     name: camera1
@@ -245,8 +258,8 @@ directives:
     name: camera2_origin
     X_PF:
         base_frame: world
-        rotation: !Rpy {camera1deg}
-        translation: [-.35, -.25, .45]
+        rotation: !Rpy {camera2deg}
+        translation: [-0.5, 0.5, .5] #[-.35, -.25, .45]
 
 - add_model:
     name: camera2
@@ -289,7 +302,8 @@ model_drivers:
     plant = station.GetSubsystemByName("plant")
     print(plant.GetStateNames())
     scene_graph = station.GetSubsystemByName("scene_graph")
-    # AddMultibodyTriad(plant.GetFrameByName("body"), scene_graph)
+
+    AddMultibodyTriad(plant.GetFrameByName("camera0_origin"), scene_graph)
 
     visualizer = MeshcatVisualizer.AddToBuilder(
         builder,
@@ -307,51 +321,21 @@ model_drivers:
     gripper = plant.GetBodyByName("body")
 
     ### camera
-    # Export the camera outputs
-    # builder.ExportOutput(
-    #     station.GetOutputPort("camera.rgb_image"), "rgb_image"
-    # )
-    # builder.ExportOutput(
-    #     station.GetOutputPort("camera.depth_image"), "depth_image"
-    # )
-
-    # to_point_cloud = AddPointClouds(
-    #     scenario=scenario, station=station, builder=builder, meshcat=meshcat
-    # )
-    # print('point_cloud', to_point_cloud)
     to_point_cloud = AddPointClouds(
         scenario=scenario, station=station, builder=builder
     )
-    print(to_point_cloud)
-    y_bin_grasp_selector = builder.AddSystem(
-        GraspSelector(
-            plant,
-            plant.GetModelInstanceByName("bin1"),
-            camera_body_indices=[
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera0"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera1"))[
-                    0
-                ],
-                plant.GetBodyIndices(plant.GetModelInstanceByName("camera2"))[
-                    0
-                ],
-            ],
+
+    #export
+    for i in range(3):
+        builder.ExportOutput(
+            to_point_cloud[f"camera{i}"].get_output_port(), f"camera{i}_point_cloud"
         )
-    )
-    builder.Connect(
-        to_point_cloud["camera0"].get_output_port(),
-        y_bin_grasp_selector.get_input_port(0),
-    )
-    builder.Connect(
-        to_point_cloud["camera1"].get_output_port(),
-        y_bin_grasp_selector.get_input_port(1),
-    )
-    builder.Connect(
-        to_point_cloud["camera2"].get_output_port(),
-        y_bin_grasp_selector.get_input_port(2),
-    )
+        builder.ExportOutput(
+        station.GetOutputPort(f"camera{i}.rgb_image"), f"camera{i}_rgb_image"
+        )
+        builder.ExportOutput(
+            station.GetOutputPort(f"camera{i}.depth_image"), f"camera{i}_depth_image"
+        )
 
     initial_pose = plant.EvalBodyPoseInWorld(context, gripper)
 
@@ -362,7 +346,7 @@ model_drivers:
     duration = 10
     gripper_traj_len = len(gripper_poses)
     unit_time = duration / (traj_len + gripper_traj_len)
-    print("trag_len:"traj_len)
+    print("trag_len:", traj_len)
     print('gripper_traj_len:', gripper_traj_len)
     print("unit_time:", unit_time)
 
@@ -396,8 +380,6 @@ model_drivers:
         g_traj_system.get_output_port(), station.GetInputPort("wsg.position")
     )
 
- 
-
     diagram = builder.Build()
     simulator = Simulator(diagram)
     visualizer.StartRecording(False)
@@ -414,4 +396,4 @@ def set_position(meshcat, X_WG, goal = (5,5), max_tries=10, fix_base=False, base
 
     # using hardware station
     plant, station, scene_graph, diagram = setup_hardware_station(meshcat, gripper_poses=gripper_poses, goal=goal)
-    return diagram
+    return diagram, station
