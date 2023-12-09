@@ -2,14 +2,14 @@ directives:
 - add_directives:
     file: package://manipulation/schunk_wsg_50_welded_fingers.dmd.yaml
 
-- add_model:
-    name: ground
-    file: package://moon/objects/ground.sdf
-- add_weld:
-    parent: world
-    child: ground::base
-    X_PC:
-        translation: [0, 0, 0]
+# - add_model:
+#     name: ground
+#     file: package://moon/objects/ground.sdf
+# - add_weld:
+#     parent: world
+#     child: ground::base
+#     X_PC:
+#         translation: [0, 0, 0]
 # - add_model:
 #     name: rock2
 #     file: package://moon/objects/Cliff_Rock_One_OBJ.sdf
@@ -39,7 +39,8 @@ directives:
     X_PF:
         base_frame: world
         rotation: !Rpy { deg: [-125., 0, 130]}
-        translation: [0.5, 0.5, .5] #[.25, -.5, .4]
+        # translation: [0.5, 0.5, .5] #[.25, -.5, .4]
+        translation: [2, 1.5, .5]
 
 - add_model:
     name: camera0
@@ -54,7 +55,8 @@ directives:
     X_PF:
         base_frame: world
         rotation: !Rpy { deg: [-125., 0, 0]}
-        translation: [0, -.7, .5] #-0.05
+        # translation: [0, -.7, .5] #-0.05
+        translation: [1.5, 0.4, .5] 
 
 - add_model:
     name: camera1
@@ -69,7 +71,8 @@ directives:
     X_PF:
         base_frame: world
         rotation: !Rpy { deg: [-125.0, 0, -130]}
-        translation: [-0.5, 0.5, .5] #[-.35, -.25, .45]
+        # translation: [-0.5, 0.5, .5] #[-.35, -.25, .45]
+        translation: [1, 1.5, .5]
 
 - add_model:
     name: camera2

@@ -136,20 +136,22 @@ directives:
     file: file://{path}/objects/obstacle_boxes.sdf
     default_free_body_pose:
         obstacles:
-            translation: [-2, -2.43, 0.01]
+            # translation: [-2, -2.43, 0.01]
+            translation: [-0.5, -2, 0.01]
 - add_model:
     name: object2
     file: file://{path}/objects/obstacle_boxes.sdf
     default_free_body_pose:
         obstacles:
-            translation: [0, 0, 0.01]
+            translation: [1.5, 1, 0.01]
     
 - add_frame:
     name: camera0_origin
     X_PF:
         base_frame: world
         rotation: !Rpy {camera0deg}
-        translation: [0.5, 0.5, .5] #[.25, -.5, .4]
+        # translation: [0.5, 0.5, .5] #[.25, -.5, .4]
+        translation: [2, 1.5, .5]
 
 - add_model:
     name: camera0
@@ -164,7 +166,8 @@ directives:
     X_PF:
         base_frame: world
         rotation: !Rpy {camera1deg}
-        translation: [0, -.7, .5] #-0.05
+        # translation: [0, -.7, .5] #-0.05
+        translation: [1.5, 0.4, .5] 
 
 - add_model:
     name: camera1
@@ -179,7 +182,8 @@ directives:
     X_PF:
         base_frame: world
         rotation: !Rpy {camera2deg}
-        translation: [-0.5, 0.5, .5] #[-.35, -.25, .45]
+        # translation: [-0.5, 0.5, .5] #[-.35, -.25, .45]
+        translation: [1, 1.5, .5]
 
 - add_model:
     name: camera2

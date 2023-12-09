@@ -36,10 +36,11 @@ from perception import grasp_selection, make_internal_model
 import pydot
 from IPython.display import display, Image, SVG
 
+def plan_trajectory():
+    # TODO: move trajectory code here 
+    return 
 
-def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
-    x, y = goal
-    goal = (-0.545 + x, -0.07 + y)
+def setup_hardware_station(meshcat, base_pos, gripper_poses, obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
     builder = DiagramBuilder()
     scenario_data = build_scenario_data()
     scenario = load_scenario(data=scenario_data)
@@ -85,6 +86,13 @@ def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1
 
     initial_pose = plant.EvalBodyPoseInWorld(context, gripper)
 
+    # # find antipodal grasps
+    # TODO: fix builder issue. Specifically, using builder.Build() in grasp_selection will cause "Build() called twice error" 
+    # cost, X_G = grasp_selection(builder, plant, station, meshcat)
+
+    # trajectory plan
+    x, y = base_pos
+    goal = (-0.55 + x, -0.07 + y)
     traj = trajectory_plan(goal)
     traj_len = len(traj)
     
@@ -119,6 +127,9 @@ def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1
     g_traj = PiecewisePolynomial.CubicShapePreserving(gripper_t_lst, gripper_knots)
     g_traj_system = builder.AddSystem(TrajectorySource(g_traj)) 
 
+    duration = 10
+    q_traj_system = builder.AddSystem(ConstantVectorSource([0]*20))
+    g_traj_system = builder.AddSystem(ConstantVectorSource([0.1]))
     builder.Connect(
         q_traj_system.get_output_port(), station.GetInputPort("iiwa.desired_state")
     )
@@ -137,12 +148,10 @@ def setup_hardware_station(meshcat, goal, gripper_poses, obstacles = [(1, 4), (1
 
 
 
-def set_position(meshcat, X_WG, goal = (5,5), max_tries=10, fix_base=False, base_pose=np.zeros(3), gripper_poses=[RigidTransform([0.5, 0.5, 0.1])]):
-    # test MakeModels
-    make_internal_model()
+def set_position(meshcat, base_pos=(0,0), gripper_poses=[RigidTransform([0.5, 0.5, 0.1])]):
     # using hardware station
-    station, plant, scene_graph, diagram = setup_hardware_station(meshcat, gripper_poses=gripper_poses, goal=goal)
-    
-    grasp_selection(plant, diagram, station, meshcat)
+    station, plant, scene_graph, diagram = setup_hardware_station(meshcat, gripper_poses=gripper_poses, base_pos=base_pos)
+
+    cost, X_G = grasp_selection(diagram, plant, station, meshcat)
    
     return diagram, station
