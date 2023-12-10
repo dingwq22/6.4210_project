@@ -63,7 +63,6 @@ def create_q_knots(pose_lst):
     world_frame = plant.world_frame()
     gripper_frame = plant.GetFrameByName("body")
     q_nominal = np.array(
-        # [0.0, 0.6, 0.0, -1.75, 0.0, 1.0, 0.0, 0.0, 0.0]
         [0.0, 0.6, 0.0, -1.75, 0.0, 1.0, 0.0, 0.0, 0.0]
     )  # nominal joint angles for joint-centering.
 
@@ -91,10 +90,10 @@ def create_q_knots(pose_lst):
             frameA=world_frame,
             frameB=gripper_frame,
             p_BQ=np.zeros(3),
+            # p_BQ = [0, 0.12, 0], # p_GO
             p_AQ_lower=p_WG_lower,
             p_AQ_upper=p_WG_upper,
         )
-
     num_trials = 10
     for i in range(len(pose_lst)):
         ik = inverse_kinematics.InverseKinematics(plant)

@@ -323,12 +323,19 @@ def get_trajectory_from_states(states):
         traj.append([2*c-6, -2*r+6, 0])
     return traj
 
+# map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
+#                 ['WG', '3^', '  ', '  ', 'WG', 'WG', 'WG'],
+#                 ['WG', '  ', 'WG', 'WG', '  ', '  ', 'WG'],
+#                 ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+#                 ['WG', 'WG', 'WG', '  ', 'WG', '  ', 'WG'],
+#                 ['WG', 'WG', 'WG', '  ', '  ', '  ', 'WG'],
+#                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
-                ['WG', '3^', '  ', '  ', 'WG', 'WG', 'WG'],
-                ['WG', '  ', 'WG', 'WG', '  ', '  ', 'WG'],
+                ['WG', '3^', '  ', '  ', '  ', '  ', 'WG'],
                 ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
-                ['WG', 'WG', 'WG', '  ', 'WG', '  ', 'WG'],
-                ['WG', 'WG', 'WG', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 
 def trajectory_plan(goal=(5,-5), gripper_pose=None):
