@@ -24,7 +24,8 @@ def make_internal_model():
     return builder.Build()
 
 
-def grasp_selection(diagram, plant, station, meshcat, camera_indices=[0, 1, 2], object_pose=[1.5, 1, 0]):
+def grasp_selection(diagram, plant, station, meshcat, camera_indices=[], object_pose=[]):
+    print('camera', camera_indices, 'base', object_pose)
     system = diagram
     context = system.CreateDefaultContext()
     system.ForcedPublish(context)
@@ -96,7 +97,7 @@ def grasp_selection(diagram, plant, station, meshcat, camera_indices=[0, 1, 2], 
         )
         if np.isfinite(cost):
             costs.append(cost)
-            X_Gs.append(X_G)
+            X_Gs.append(X_G) 
 
     if len(costs) == 0:
         # Didn't find a viable grasp candidate

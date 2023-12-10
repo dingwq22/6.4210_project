@@ -50,6 +50,7 @@ def CreateIiwaControllerPlant():
         )
 
     return plant_robot, link_frame_indices
+    
 
 gripper_q_mapping =  {(0, -0.3, 0.5): np.array([-0.71238261,  1.55645414, -1.97399239, -1.72756634, -0.39117848,
         2.0944    , -2.04579181,  0.        ,  0.        ]), 
@@ -62,6 +63,7 @@ gripper_q_mapping =  {(0, -0.3, 0.5): np.array([-0.71238261,  1.55645414, -1.973
         (0, 0, 0): np.zeros(9)
         }
 
+plant = None
 
 def create_q_knots(pose_lst):
     """Convert end-effector pose list to joint position list using series of
@@ -71,7 +73,12 @@ def create_q_knots(pose_lst):
     @return: q_knots (python_list): q_knots[i] contains IK solution that will give f(q_knots[i]) \approx pose_lst[i].
     """
     q_knots = []
-    plant, _ = CreateIiwaControllerPlant()
+    global plant 
+    if plant is None:
+        print('first time')
+        
+        plant = CreateIiwaControllerPlant()[0]
+    
     world_frame = plant.world_frame()
     gripper_frame = plant.GetFrameByName("body")
     q_nominal = np.array(
@@ -107,13 +114,18 @@ def create_q_knots(pose_lst):
             p_AQ_upper=p_WG_upper,
         )
     num_trials = 10
+    print(pose_lst)
     for i in range(len(pose_lst)):
+        print('enter loop', i)
         ik = inverse_kinematics.InverseKinematics(plant)
         q_variables = ik.q()  # Get variables for MathematicalProgram
         p, r = pose_lst[i].translation(), pose_lst[i].rotation()
+        print('create q', i, p)
+        print('mapping keys', list(gripper_q_mapping.keys()))
 
         if tuple(p) in gripper_q_mapping:
             q_knots.append(list(gripper_q_mapping[tuple(p)]))
+            print('found in cache')
             continue
 
         for trial in range(num_trials):
