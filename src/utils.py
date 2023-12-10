@@ -33,6 +33,7 @@ from manipulation.meshcat_utils import AddMeshcatTriad
 from manipulation.scenarios import AddMultibodyTriad, MakeManipulationStation
 from manipulation.utils import running_as_notebook
 
+
 def notebook_plot_plant(plant):
     display(
         Image(
@@ -59,9 +60,30 @@ def notebook_plot_diagram_svg(diagram):
     ].create_svg()
 )
 
+def get_mountain_yaml(obstables):
+    path = find_project_path()
+    mountains = ''
+    i = 0
+    for (r,c) in obstables:
+        i+=1
+      
+        x = 2*c-6
+        y = -2*r+6
+        path = find_project_path()
+        mountains+= f'''
+- add_model:
+    name: mountain{i}
+    file: file://{path}/objects/mountain_OBJ.sdf
+- add_weld:
+    parent: world
+    child: mountain{i}::mountain_OBJ
+    X_PC:
+        translation: [{x}, {y}, 0]       
+        '''
+    return mountains
 
 
-def build_scenario_data():
+def build_scenario_data(obstacles):
     path = find_project_path()
     print(path)
     degrees = '{ deg: [90, 0, 90]}'
@@ -192,7 +214,10 @@ directives:
 - add_weld:
     parent: camera2_origin
     child: camera2::base
-
+"""
+    # add mountains
+    # scenario_data += get_mountain_yaml(obstacles)
+    scenario_data += f'''
 cameras:
     camera0:
       name: camera0
@@ -211,9 +236,7 @@ cameras:
       depth: True
       X_PB:
         base_frame: camera2::base
-"""
-    # add mountains
-    # scenario_data += get_mountain_yaml(obstables)
+     '''
     scenario_data += f'''
 model_drivers:
     iiwa: {driver1}

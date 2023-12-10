@@ -42,12 +42,12 @@ def plan_trajectory():
 
 def setup_hardware_station(meshcat, base_pos, gripper_poses, obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]):
     builder = DiagramBuilder()
-    scenario_data = build_scenario_data()
+    scenario_data = build_scenario_data(obstacles)
     scenario = load_scenario(data=scenario_data)
     station = builder.AddSystem(MakeHardwareStation(scenario, meshcat))
 
     plant = station.GetSubsystemByName("plant")
-    print(plant.GetStateNames())
+    # print('plant states', plant.GetStateNames())
     scene_graph = station.GetSubsystemByName("scene_graph")
 
     AddMultibodyTriad(plant.GetFrameByName("camera0_origin"), scene_graph)
@@ -93,7 +93,7 @@ def setup_hardware_station(meshcat, base_pos, gripper_poses, obstacles = [(1, 4)
     # trajectory plan
     x, y = base_pos
     goal = (-0.55 + x, -0.07 + y)
-    traj = trajectory_plan(goal)
+    traj = trajectory_plan(goal, obstacles = obstacles)
     traj_len = len(traj)
     
 
@@ -110,7 +110,10 @@ def setup_hardware_station(meshcat, base_pos, gripper_poses, obstacles = [(1, 4)
     q_poses[0:3, :]= np.array(traj + [traj[-1]]*gripper_traj_len).T 
     
     # find joint positions from end-effector pose
-    joint_pos_lst = create_q_knots(gripper_poses)  # shape=(gripper_traj_len, 7)
+    joint_pos_lst = [np.zeros(9) for _ in range(gripper_traj_len)]
+    ######## to do - convert back[hard coding for debugging speed] ######3
+    # joint_pos_lst = create_q_knots(gripper_poses)  # shape=(gripper_traj_len, 7)
+    print('joint_pos_lst', joint_pos_lst)
     
     # iiwa joints trajectory 
     for i in range(gripper_traj_len):
@@ -127,9 +130,9 @@ def setup_hardware_station(meshcat, base_pos, gripper_poses, obstacles = [(1, 4)
     g_traj = PiecewisePolynomial.CubicShapePreserving(gripper_t_lst, gripper_knots)
     g_traj_system = builder.AddSystem(TrajectorySource(g_traj)) 
 
-    duration = 10
-    q_traj_system = builder.AddSystem(ConstantVectorSource([0]*20))
-    g_traj_system = builder.AddSystem(ConstantVectorSource([0.1]))
+    # duration = 10
+    # q_traj_system = builder.AddSystem(ConstantVectorSource([0]*20))
+    # g_traj_system = builder.AddSystem(ConstantVectorSource([0.1]))
     builder.Connect(
         q_traj_system.get_output_port(), station.GetInputPort("iiwa.desired_state")
     )
