@@ -101,6 +101,7 @@ class RewardProblem(Problem):
 
 
 def parse_map(map):
+  
     '''
     map: map represented as np array
     return initial=(r, c, direction), goal=(r, c), size = (h, w)
@@ -108,7 +109,7 @@ def parse_map(map):
     '''
     h, w = map.shape
     wall = True
-    initial, goal = None, None
+    initial, goal = None, []
     door_open = True
     for i in range(h):
         for j in range(w):
@@ -127,12 +128,40 @@ def parse_map(map):
        raise ValueError(f'{initial, goal} one of initial/goal is None')
     return tuple(list(initial)+[door_open]), goal
 
+def parse_map2(map):
+    '''
+    map: map represented as np array
+    return initial=(r, c, direction), goal=(r, c), size = (h, w)
+    e.g. initial=(1, 1, 0), goal=(3, 3), size = (3,3)
+    '''
+    h, w = map.shape
+    wall = True
+    initial, goal = None, []
+    door_open = True
+    for i in range(h):
+        for j in range(w):
+            if map[i,j]:
+                obj = map[i,j][0]
+
+                if obj == 'L':
+                   door_open = False
+
+                if obj in ['0', '1', '2', '3']: #agent
+                    initial = (i, j, int(obj))
+
+                if obj=='G': #goal
+                    goal.append((i,j))
+    if not initial or not goal:
+       raise ValueError(f'{initial, goal} one of initial/goal is None')
+    return tuple(list(initial)+[tuple(False for _ in range(len(goal)))]+[door_open]), goal
+
 class GridProblem(PathCostProblem):
     """A grid problem."""
 
     def __init__(self, map):
         self.map = map
         initial, goal = parse_map(map)
+        print('initial state', initial)
         super().__init__(initial)
         self.goal = goal
         self.all_grid_actions = ["forward", "left", "right"]
@@ -323,21 +352,38 @@ def get_trajectory_from_states(states):
         traj.append([2*c-6, -2*r+6, 0])
     return traj
 
+# map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
+#                 ['WG', '3^', '  ', '  ', 'WG', 'WG', 'WG'],
+#                 ['WG', '  ', 'WG', 'WG', '  ', '  ', 'WG'],
+#                 ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+#                 ['WG', 'WG', 'WG', '  ', 'WG', '  ', 'WG'],
+#                 ['WG', 'WG', 'WG', '  ', '  ', '  ', 'WG'],
+#                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 map_default = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
-                ['WG', '3^', '  ', '  ', 'WG', 'WG', 'WG'],
-                ['WG', '  ', 'WG', 'WG', '  ', '  ', 'WG'],
+                ['WG', '3^', '  ', '  ', '  ', '  ', 'WG'],
                 ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
-                ['WG', 'WG', 'WG', '  ', 'WG', '  ', 'WG'],
-                ['WG', 'WG', 'WG', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 
-def trajectory_plan(goal=(5,-5), gripper_pose=None):
+map_empty = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
+                ['WG', '3^', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', '  ', '  ', '  ', 'WG'],
+                ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
+
+def trajectory_plan(goal=(5,-5), obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)], gripper_pose=None):
   x, y = goal 
   print('map goal (x, y):', goal)
   goal = (round(-0.5*y + 3), round(0.5*x + 3)) #r, c
-  print('grid goa (r, c)', goal)
-  curr_map = map_default.copy()
+  print('grid goal (r, c)', goal)
+  curr_map = map_empty.copy()
   curr_map[goal[0], goal[1]] = 'GG'
+  for obs in obstacles:
+    curr_map[obs] = 'WG'
   result = get_astar_plan(curr_map,step_budget =1000)
   print('traj in grid coord:', result[0])
   total_traj = get_trajectory_from_states(result[0]) + [[x, y, 0]]
@@ -360,6 +406,9 @@ maps2 = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
                 ['WG', 'WG', 'WG', '  ', '  ', 'GG', 'WG'],
                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 
+obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)]
+
+
 
 # add inverse dynamics controller
 # actuation import port -> choose inverse dynamics
@@ -369,4 +418,14 @@ maps2 = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
 # # print(g.actions((1, 1, 0, (), False)))
 # result = get_astar_plan(maps2,step_budget =1000)
 
-traj = trajectory_plan([3.1, 0])
+# traj = trajectory_plan([0.95, 0.93])
+
+map3 = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
+                ['WG', '3^', '  ', '  ', 'WG', 'WG', 'WG'],
+                ['WG', '  ', 'WG', 'WG', '  ', '  ', 'WG'],
+                ['WG', '  ', '  ', 'GG', '  ', '  ', 'WG'],
+                ['WG', 'WG', 'WG', '  ', 'WG', '  ', 'WG'],
+                ['WG', 'WG', 'WG', '  ', '  ', 'GG', 'WG'],
+                ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
+
+print(parse_map(map3))

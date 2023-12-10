@@ -21,11 +21,11 @@ def get_mountain_yaml(obstables):
     path = find_project_path()
     mountains = ''
     i = 0
-    for (x,y) in obstables:
+    for (r,c) in obstables:
         i+=1
-        coord_f = lambda x: 9/4*x-27/4
-        x = coord_f(x)
-        y = coord_f(y)
+      
+        x = 2*c-6
+        y = -2*r+6
         path = find_project_path()
         mountains+= f'''
 - add_model:
@@ -38,4 +38,4 @@ def get_mountain_yaml(obstables):
         translation: [{x}, {y}, 0]       
         '''
     return mountains
-print(get_mountain_yaml(obstables))
+# print(get_mountain_yaml(obstables))

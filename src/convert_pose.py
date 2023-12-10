@@ -51,6 +51,18 @@ def CreateIiwaControllerPlant():
 
     return plant_robot, link_frame_indices
 
+gripper_q_mapping =  {(0, -0.3, 0.5): np.array([-0.71238261,  1.55645414, -1.97399239, -1.72756634, -0.39117848,
+        2.0944    , -2.04579181,  0.        ,  0.        ]), 
+       (-0.5, -0.3, 0.5) : np.array([-1.96966727,  1.01300565, -0.87795721, -0.96760784, -0.77066757,
+        1.95153448, -1.36202724,  0.        ,  0.        ]), 
+        (-.5, 0, 0.5): np.array([-1.99919397,  0.7687324 , -1.13992482, -1.63819168, -0.89933682,
+        1.35496273, -1.14798109,  0.        ,  0.        ]), 
+        (-0.2, 0, 1) : np.array([-0.99014668,  0.40692406, -2.21711633, -1.00909656, -1.27710566,
+        1.68597137, -2.2554369 ,  0.        ,  0.        ]),
+        (0, 0, 0): np.zeros(9)
+        }
+
+
 def create_q_knots(pose_lst):
     """Convert end-effector pose list to joint position list using series of
     InverseKinematics problems. Note that q is 9-dimensional because the last 2 dimensions
@@ -63,7 +75,6 @@ def create_q_knots(pose_lst):
     world_frame = plant.world_frame()
     gripper_frame = plant.GetFrameByName("body")
     q_nominal = np.array(
-        # [0.0, 0.6, 0.0, -1.75, 0.0, 1.0, 0.0, 0.0, 0.0]
         [0.0, 0.6, 0.0, -1.75, 0.0, 1.0, 0.0, 0.0, 0.0]
     )  # nominal joint angles for joint-centering.
 
@@ -91,15 +102,19 @@ def create_q_knots(pose_lst):
             frameA=world_frame,
             frameB=gripper_frame,
             p_BQ=np.zeros(3),
+            # p_BQ = [0, 0.12, 0], # p_GO
             p_AQ_lower=p_WG_lower,
             p_AQ_upper=p_WG_upper,
         )
-
     num_trials = 10
     for i in range(len(pose_lst)):
         ik = inverse_kinematics.InverseKinematics(plant)
         q_variables = ik.q()  # Get variables for MathematicalProgram
         p, r = pose_lst[i].translation(), pose_lst[i].rotation()
+
+        if tuple(p) in gripper_q_mapping:
+            q_knots.append(list(gripper_q_mapping[tuple(p)]))
+            continue
 
         for trial in range(num_trials):
             prog = ik.prog()  # Get MathematicalProgram

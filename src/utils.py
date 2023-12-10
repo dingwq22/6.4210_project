@@ -83,7 +83,7 @@ def get_mountain_yaml(obstables):
     return mountains
 
 
-def build_scenario_data(obstacles):
+def build_scenario_data(obstacles, base_pos):
     path = find_project_path()
     print(path)
     degrees = '{ deg: [90, 0, 90]}'
@@ -152,91 +152,76 @@ directives:
     child: bin1::bin_base
     X_PC:
         translation: [-.5, 0, 0]
-
-- add_model:
-    name: object1
-    file: file://{path}/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            # translation: [-2, -2.43, 0.01]
-            translation: [-0.5, -2, 0.01]
-- add_model:
-    name: object2
-    file: file://{path}/objects/obstacle_boxes.sdf
-    default_free_body_pose:
-        obstacles:
-            translation: [1.5, 1, 0.01]
-    
-- add_frame:
-    name: camera0_origin
-    X_PF:
-        base_frame: world
-        rotation: !Rpy {camera0deg}
-        # translation: [0.5, 0.5, .5] #[.25, -.5, .4]
-        translation: [2, 1.5, .5]
-
-- add_model:
-    name: camera0
-    file: package://manipulation/camera_box.sdf
-
-- add_weld:
-    parent: camera0_origin
-    child: camera0::base
-
-- add_frame:
-    name: camera1_origin
-    X_PF:
-        base_frame: world
-        rotation: !Rpy {camera1deg}
-        # translation: [0, -.7, .5] #-0.05
-        translation: [1.5, 0.4, .5] 
-
-- add_model:
-    name: camera1
-    file: package://manipulation/camera_box.sdf
-
-- add_weld:
-    parent: camera1_origin
-    child: camera1::base
-
-- add_frame:
-    name: camera2_origin
-    X_PF:
-        base_frame: world
-        rotation: !Rpy {camera2deg}
-        # translation: [-0.5, 0.5, .5] #[-.35, -.25, .45]
-        translation: [1, 1.5, .5]
-
-- add_model:
-    name: camera2
-    file: package://manipulation/camera_box.sdf
-
-- add_weld:
-    parent: camera2_origin
-    child: camera2::base
 """
     # add mountains
     # scenario_data += get_mountain_yaml(obstacles)
+    #add the cylinder & 3 mountains near it
+    for i, b in enumerate(base_pos):
+        scenario_data += f'''
+- add_model:
+    name: object{i}
+    file: file://{path}/objects/obstacle_boxes.sdf
+    default_free_body_pose:
+        obstacles:
+            translation: [{b[0]}, {b[1]}, 0.01]
+- add_frame:
+    name: camera{3*i}_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy {camera0deg}
+        translation: [{b[0]+0.5}, {b[1]+0.5}, .5]
+
+- add_model:
+    name: camera{3*i}
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera{3*i}_origin
+    child: camera{3*i}::base
+
+- add_frame:
+    name: camera{3*i+1}_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy {camera1deg}
+        translation: [{b[0]}, {b[1]-0.6}, .5] 
+
+- add_model:
+    name: camera{3*i+1}
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera{3*i+1}_origin
+    child: camera{3*i+1}::base
+
+- add_frame:
+    name: camera{3*i+2}_origin
+    X_PF:
+        base_frame: world
+        rotation: !Rpy {camera2deg}
+        translation: [{b[0]-0.5}, {b[1]+0.5}, .5]
+
+- add_model:
+    name: camera{3*i+2}
+    file: package://manipulation/camera_box.sdf
+
+- add_weld:
+    parent: camera{3*i+2}_origin
+    child: camera{3*i+2}::base
+    '''
+    # cameras section
     scenario_data += f'''
 cameras:
-    camera0:
-      name: camera0
+'''
+    for i in range(len(base_pos)*3):
+       scenario_data += f'''
+    camera{i}:
+      name: camera{i}
       depth: True
       X_PB:
-        base_frame: camera0::base
-
-    camera1:
-      name: camera1
-      depth: True
-      X_PB:
-        base_frame: camera1::base
-
-    camera2:
-      name: camera2
-      depth: True
-      X_PB:
-        base_frame: camera2::base
+        base_frame: camera{i}::base
      '''
+    # model_drivers section
     scenario_data += f'''
 model_drivers:
     iiwa: {driver1}

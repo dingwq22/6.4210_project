@@ -9,7 +9,7 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.05</radius>
+            <radius>0.03</radius>
             <length>0.25</length>
           </cylinder>
         </geometry>
@@ -21,13 +21,13 @@
         <pose>0 0 0 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.05</radius>
+            <radius>0.03</radius>
             <length>0.25</length>
           </cylinder>
         </geometry>
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
-          <drake:mesh_resolution_hint>0.1</drake:mesh_resolution_hint>
+          <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
           <drake:hydroelastic_modulus>5e7</drake:hydroelastic_modulus>
           <drake:hunt_crossley_dissipation>1.25</drake:hunt_crossley_dissipation>
         </drake:proximity_properties>

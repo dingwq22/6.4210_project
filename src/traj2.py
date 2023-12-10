@@ -358,21 +358,48 @@ map_empty = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
                 ['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG']])
 
 def trajectory_plan(goal=[(5,-5)], obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5, 2)], gripper_pose=None):
-  for g in goal
-  x, y = goal 
-  print('map goal (x, y):', goal)
-  goal = (round(-0.5*y + 3), round(0.5*x + 3)) #r, c
-  print('grid goal (r, c)', goal)
+  '''
+  multi-goal traj planning
+  argument
+    goal: list of goals in xy coord
+    obtacles: list of obstacles in grid coord
+  return 
+    traj: list of [x, y, z], z=0 for all
+  '''
+  goal_grid = []
   curr_map = map_empty.copy()
-  goal = [(5,3)] #(3,4)
+  goal_map = dict()
   for g in goal:
-    curr_map[g[0], g[1]] = 'GG'
+    x, y = g
+    new_g = (round(-0.5*y + 3), round(0.5*x + 3))
+    goal_grid.append(new_g)
+    goal_map[new_g] = g
+    curr_map[new_g[0], new_g[1]] = 'GG'
+#   goal = [(5,3)] #(3,4)
+  print('goal in xy', goal)
+  print('goal in grids', goal_grid)
+    
   for obs in obstacles:
+    if obs in goal_grid:
+       print(f'the goal (x,y) = {goal_map[obs]} (r,c) = {obs} clashes with a mountain, cannot retrieve it')
     curr_map[obs] = 'WG'
   result = get_astar_plan(curr_map,step_budget =1000)
   print('traj in grid coord:', result[0])
-  total_traj = get_trajectory_from_states(result[0]) + [[x, y, 0]]
-  print('traj in xy coord:', total_traj)
+  total_traj = []
+  grid_traj = result[0]
+  prev_id = 0
+  prev_goal = None
+  for i in range(len(grid_traj)):
+     s = grid_traj[i]
+     if s[:2] in goal_grid and s[:2] != prev_goal:
+        total_traj.append(get_trajectory_from_states([grid_traj[prev_id]] + grid_traj[prev_id:i+1]) + [[*goal_map[s[:2]], 0]])
+        print('segment in xy coord:', get_trajectory_from_states([grid_traj[prev_id]] + grid_traj[prev_id:i+1]) + [[*goal_map[s[:2]], 0]])
+        #[*grid_traj[i], 0]
+        prev_id = i+1
+        prev_goal = s[:2]
+        
+  # total_traj = get_trajectory_from_states(result[0]) + [[x, y, 0]]
+  # print('traj in xy coord:', total_traj)
   return total_traj 
 
 
@@ -403,7 +430,7 @@ obstacles = [(1, 4), (1, 5), (2, 2), (2, 3), (4, 1), (4, 2), (4, 4), (5, 1), (5,
 # # print(g.actions((1, 1, 0, (), False)))
 # result = get_astar_plan(maps2,step_budget =1000)
 
-traj = trajectory_plan([0.95, 0.93])
+traj = trajectory_plan([(0.1, -4.4), (2.2, -0.1)]) #[(1.5, 1), (-3, -4)]) 
 
 # map3 = np.array([['WG', 'WG', 'WG', 'WG', 'WG', 'WG', 'WG'],
 #                 ['WG', '3^', '  ', '  ', 'WG', 'WG', 'WG'],
