@@ -154,7 +154,7 @@ directives:
         translation: [-.5, 0, 0]
 """
     # add mountains
-    # scenario_data += get_mountain_yaml(obstacles)
+    scenario_data += get_mountain_yaml(obstacles)
     #add the cylinder & 3 mountains near it
     for i, b in enumerate(base_pos):
         scenario_data += f'''

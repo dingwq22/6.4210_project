@@ -186,7 +186,7 @@ def setup_hardware_station(meshcat, base_pos=None, gripper_poses=None, obstacles
         gripper_open_t = segment_total_time  - unit_time*4
         gripper_t_lst = np.array([0.1, unit_time*(traj_len), gripper_close_t,  gripper_open_t, segment_total_time]) + last_timestamp
         total_gripper_t_lst = np.concatenate((total_gripper_t_lst, gripper_t_lst))
-        last_timestamp = segment_total_time
+        last_timestamp += segment_total_time
         gripper_knots = np.array([1, 1, 0.1, 0, 1]).reshape(1, len(gripper_t_lst))
         total_gripper_knots = np.concatenate((total_gripper_knots, gripper_knots), axis=1)
         
@@ -238,40 +238,40 @@ def set_position(meshcat, base_pos=None, gripper_poses=None, obstacles = [(1, 4)
 
 # print(joint_pos_lst)
 
-gripper_1 = [ 0.48111933, -0.0695355, 0.02945262]
-# gripper_1 = X_G.translation() - last_iiwa_pos + [-0.02, -0.07, -0.2] # magic number 
-print("gripper_1", gripper_1)
-new_pos = lambda delta: [x+y for x,y in zip(gripper_1, delta)]
-gripper_poses = [RigidTransform(new_pos([0, 0, 0.3])), 
-                RigidTransform(gripper_1), 
-                RigidTransform(gripper_1), 
-                RigidTransform(gripper_1), 
-                RigidTransform(new_pos([0, 0, 0.3])), 
-                RigidTransform([0, -0.3, 0.5]), 
-                RigidTransform([-0.5, -0.3, 0.5]), 
-                RigidTransform([-.5, 0, 0.5]), 
-                RigidTransform([-.5, 0, 0.5]),
-                RigidTransform([-0.5, 0, 0.5]), 
-                RigidTransform([-0.2, 0, 1]),
-                RigidTransform([0, 0, 0])
-                ] 
-joint_pos_lst = create_q_knots(gripper_poses)
-print(joint_pos_lst)
+# gripper_1 = [ 0.48111933, -0.0695355, 0.02945262]
+# # gripper_1 = X_G.translation() - last_iiwa_pos + [-0.02, -0.07, -0.2] # magic number 
+# print("gripper_1", gripper_1)
+# new_pos = lambda delta: [x+y for x,y in zip(gripper_1, delta)]
+# gripper_poses = [RigidTransform(new_pos([0, 0, 0.3])), 
+#                 RigidTransform(gripper_1), 
+#                 RigidTransform(gripper_1), 
+#                 RigidTransform(gripper_1), 
+#                 RigidTransform(new_pos([0, 0, 0.3])), 
+#                 RigidTransform([0, -0.3, 0.5]), 
+#                 RigidTransform([-0.5, -0.3, 0.5]), 
+#                 RigidTransform([-.5, 0, 0.5]), 
+#                 RigidTransform([-.5, 0, 0.5]),
+#                 RigidTransform([-0.5, 0, 0.5]), 
+#                 RigidTransform([-0.2, 0, 1]),
+#                 RigidTransform([0, 0, 0])
+#                 ] 
+# joint_pos_lst = create_q_knots(gripper_poses)
+# print(joint_pos_lst)
 
 
-import numpy as np
-from pydrake.all import StartMeshcat, RotationMatrix, RigidTransform
-from matplotlib import pyplot as plt
-# from mobile_base_ik import solve_ik, set_position
-from IPython.display import display, Image, SVG
-import pydot
+# import numpy as np
+# from pydrake.all import StartMeshcat, RotationMatrix, RigidTransform
+# from matplotlib import pyplot as plt
+# # from mobile_base_ik import solve_ik, set_position
+# from IPython.display import display, Image, SVG
+# import pydot
 
-# Start the visualizer.
-meshcat = StartMeshcat()
-# gripper_poses = [RigidTransform([0.5, 0, 0.5]), RigidTransform([0.5, 0, 0]), RigidTransform([0.5, 0, 0]), RigidTransform([0.5, 0, 0]), RigidTransform([0.5, 0, 0.5]), RigidTransform([0, -0.3, 0.5]), RigidTransform([-0.5, -0.3, 0.5]), RigidTransform([-.5, 0, 0.5]), RigidTransform([-.5, 0, 0.5])] 
-base_pos = [(2.6, 2.6),(4.2, -4.8)] #, (2.6, 2.6)]
-diagram, station = set_position(meshcat, base_pos=base_pos)
-SVG(
-    pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=1))[
-        0
-    ].create_svg())
+# # Start the visualizer.
+# meshcat = StartMeshcat()
+# # gripper_poses = [RigidTransform([0.5, 0, 0.5]), RigidTransform([0.5, 0, 0]), RigidTransform([0.5, 0, 0]), RigidTransform([0.5, 0, 0]), RigidTransform([0.5, 0, 0.5]), RigidTransform([0, -0.3, 0.5]), RigidTransform([-0.5, -0.3, 0.5]), RigidTransform([-.5, 0, 0.5]), RigidTransform([-.5, 0, 0.5])] 
+# base_pos = [(2.6, 2.6),(4.2, -4.8)] #, (2.6, 2.6)]
+# diagram, station = set_position(meshcat, base_pos=base_pos)
+# SVG(
+#     pydot.graph_from_dot_data(diagram.GetGraphvizString(max_depth=1))[
+#         0
+#     ].create_svg())
